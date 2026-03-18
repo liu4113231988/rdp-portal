@@ -2,7 +2,7 @@
  * @Author: liucy liu4113231988@163.com
  * @Date: 2026-03-18 18:03:19
  * @LastEditors: liucy liu4113231988@163.com
- * @LastEditTime: 2026-03-18 18:25:03
+ * @LastEditTime: 2026-03-18 19:26:34
  * @FilePath: \rdp-portal\todo.md
  * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
 -->
@@ -62,16 +62,12 @@
 工程质量与发布
 - 打包与分发
   - 生成安装包（MSI 或自解压安装器），并保持签名（已有签名配置）
-- 测试与 CI
-  - 添加单元/集成测试（关键逻辑），并配置 CI（GitHub Actions）以自动构建
 - 文档
   - README 补充使用手册：配置说明、常见问题、打包/发布说明
 
 建议的初始实现步骤（可拆分成多份 PR）
 1. 用 `TableLayoutPanel` 重构右侧详情面板，保证元素在不同宽度下对齐。
-2. 将凭据存储迁移到 Windows Credential Manager（或使用 DPAPI 加密本地存储）。
 3. 支持导入/导出（JSON）配置与单个 .rdp 导出。
-4. 增加搜索/过滤以及配置分组功能。
 5. 添加托盘图标和“最小化到托盘”选项。
 
 如果你同意，我可以把以上条目逐项拆成具体的 issue/待办（带实现说明和优先级），并在仓库中生成 `todo.md`（已生成）和多个以任务为单位的 TODO 条目。

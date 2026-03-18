@@ -1,64 +1,127 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
-using Newtonsoft.Json;
+using System.Linq;
 
 namespace RDP_Portal
 {
-    public class Config
+    public class Config : IDisposable
     {
-
         private static Config? _instance;
-        public static string filename = "config.json";
+        private readonly DatabaseContext _db;
+        private readonly ProfileRepository _profileRepo;
+
         public static string rdpDir = "rdp-files";
+
+        private Config()
+        {
+            _db = new DatabaseContext();
+            _profileRepo = new ProfileRepository(_db);
+            Profiles = new BindingList<Profile>();
+            Groups = new List<Group>();
+        }
 
         public static Config GetConfig()
         {
-            if (!File.Exists(filename))
+            if (_instance == null)
             {
-                File.AppendAllText(filename, "{}");
+                _instance = new Config();
+                _instance.Load();
             }
+            return _instance;
+        }
 
+        public BindingList<Profile> Profiles { get; private set; }
+        public List<Group> Groups { get; set; }
+        public bool KeepOpening { get; set; } = true;
+
+        public void ImportProfiles(List<Profile> profiles)
+        {
+            foreach (var profile in profiles)
+            {
+                profile.Id = 0;
+                profile.Id = _profileRepo.InsertProfile(profile);
+                Profiles.Add(profile);
+            }
+        }
+
+        private void Load()
+        {
             if (!Directory.Exists(rdpDir))
             {
                 Directory.CreateDirectory(rdpDir);
             }
 
-            var json = File.ReadAllText(filename);
+            var profiles = _profileRepo.GetAllProfiles();
+            Profiles = new BindingList<Profile>(profiles);
 
-            _instance = JsonConvert.DeserializeObject<Config>(json);
+            var groups = _profileRepo.GetAllGroups();
+            Groups = groups;
 
-            if (_instance == null)
-            {
-                throw new Exception("Cannot read config.json");
-            }
-
-            if (_instance.Profiles == null)
-            {
-                _instance.Profiles = new BindingList<Profile>();
-                _instance.Save();
-            }
-
-            if (_instance.Groups == null)
-            {
-                _instance.Groups = new List<Group>();
-                _instance.Save();
-            }
-
-            return _instance;
+            LoadSettings();
         }
 
-        public BindingList<Profile> Profiles { get; set; }
-
-        public List<Group> Groups { get; set; }
-
-        public bool KeepOpening { get; set; } = true;
+        private void LoadSettings()
+        {
+            var setting = _profileRepo.GetSetting("KeepOpening");
+            if (setting != null && bool.TryParse(setting, out bool keepOpening))
+            {
+                KeepOpening = keepOpening;
+            }
+        }
 
         public void Save()
         {
-            var json = JsonConvert.SerializeObject(this, Formatting.Indented);
-            File.WriteAllText(filename, json);
+            foreach (var profile in Profiles)
+            {
+                if (profile.Id == 0)
+                {
+                    profile.Id = _profileRepo.InsertProfile(profile);
+                }
+                else
+                {
+                    _profileRepo.UpdateProfile(profile);
+                }
+            }
+
+            _profileRepo.SetSetting("KeepOpening", KeepOpening.ToString());
+        }
+
+        public void SaveGroups()
+        {
+            var existingGroups = _profileRepo.GetAllGroups();
+            var existingNames = existingGroups.Select(g => g.GroupName).ToList();
+
+            foreach (var group in Groups)
+            {
+                if (!existingNames.Contains(group.GroupName))
+                {
+                    _profileRepo.InsertGroup(group);
+                }
+            }
+
+            foreach (var existing in existingGroups)
+            {
+                if (!Groups.Any(g => g.GroupName == existing.GroupName))
+                {
+                    _profileRepo.DeleteGroup(existing.Id);
+                }
+            }
+        }
+
+        public void DeleteProfile(Profile profile)
+        {
+            if (profile.Id > 0)
+            {
+                _profileRepo.DeleteProfile(profile.Id);
+            }
+            Profiles.Remove(profile);
+        }
+
+        public void Dispose()
+        {
+            _db?.Dispose();
         }
     }
 }

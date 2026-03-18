@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows10.0.20348.0</TargetFramework>
@@ -35,6 +35,9 @@
     <PackageReference Include="Fody" Version="6.6.4" PrivateAssets="all" />
     <PackageReference Include="Costura.Fody" Version="5.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.6" />
+    <PackageReference Include="Dapper" Version="2.1.21" />
   </ItemGroup>
 
   <ItemGroup>

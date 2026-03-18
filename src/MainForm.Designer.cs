@@ -535,7 +535,7 @@ namespace RDP_Portal {
             Controls.Add(panelBottom);
             Icon = (System.Drawing.Icon)resources.GetObject("$this.Icon");
             Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            MinimumSize = new System.Drawing.Size(560, 697);
+            MinimumSize = new System.Drawing.Size(600, 697);
             Name = "MainForm";
             Text = "RDP Portal";
             Load += MainForm_Load;

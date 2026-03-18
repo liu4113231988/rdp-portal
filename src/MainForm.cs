@@ -69,7 +69,8 @@ namespace RDP_Portal
                     if (!_config.Groups.Where(t => t.GroupName.Equals(name)).Any())
                     {
                         _config.Groups.Add(new Group() { GroupName = name });
-                        _config.Save();
+                        _config.SaveGroups();
+                        _config.Groups = new ProfileRepository(new DatabaseContext()).GetAllGroups();
                         PopulateTree();
                         MessageBox.Show("Group '" + name + "' created.");
                     }
@@ -97,19 +98,15 @@ namespace RDP_Portal
                 if (treeViewProfiles.SelectedNode == null) return;
                 if (treeViewProfiles.SelectedNode.Tag is Profile)
                 {
-                    // select and enter edit mode
                     SelectProfile(true);
                     EditMode = true;
                 }
                 else
                 {
-                    // group rename
                     var oldName = treeViewProfiles.SelectedNode.Text;
                     var newName = Prompt.ShowDialog("Rename group:", "Rename Group", oldName);
-                    // Use case-insensitive comparison to avoid duplicates with different casing
                     if (!String.IsNullOrWhiteSpace(newName) && !string.Equals(newName, oldName, StringComparison.OrdinalIgnoreCase))
                     {
-                        // rename in profiles - match by exact value from tree (which came from PopulateTree)
                         var group = _config.Groups.Where(t => t.GroupName == oldName).FirstOrDefault();
                         if (group != null)
                         {
@@ -121,12 +118,13 @@ namespace RDP_Portal
                             if (!String.IsNullOrWhiteSpace(p.Group) && p.Group == oldName)
                             {
                                 p.Group = newName;
+                                _config.Save();
                             }
                         }
 
                         _config.Groups = _config.Groups.OrderBy(t => t.GroupName).ToList();
+                        _config.SaveGroups();
 
-                        _config.Save();
                         PopulateTree();
                     }
                 }
@@ -140,8 +138,7 @@ namespace RDP_Portal
                     if (ok == DialogResult.Yes)
                     {
                         p.Delete();
-                        _config.Profiles.Remove(p);
-                        _config.Save();
+                        _config.DeleteProfile(p);
                         PopulateTree();
                     }
                 }
@@ -155,7 +152,7 @@ namespace RDP_Portal
                         foreach (var ip in items)
                         {
                             ip.Delete();
-                            _config.Profiles.Remove(ip);
+                            _config.DeleteProfile(ip);
                         }
 
                         if (_config.Groups != null)
@@ -164,11 +161,10 @@ namespace RDP_Portal
                             if (group != null)
                             {
                                 _config.Groups.Remove(group);
+                                _config.SaveGroups();
                             }
-
                         }
 
-                        _config.Save();
                         PopulateTree();
                     }
                 }
@@ -393,20 +389,17 @@ namespace RDP_Portal
 
         private void buttonDelete_Click(object sender, EventArgs e)
         {
-            // show confirm dialog
             var confirmResult = MessageBox.Show(
                 "Are you sure to delete this profile?",
                 "Confirm",
                 MessageBoxButtons.YesNo);
 
-            // if confirm delete
             if (confirmResult == DialogResult.Yes)
             {
                 if (treeViewProfiles.SelectedNode != null && treeViewProfiles.SelectedNode.Tag is Profile toDelete)
                 {
                     toDelete.Delete();
-                    _config.Profiles.Remove(toDelete);
-                    _config.Save();
+                    _config.DeleteProfile(toDelete);
                     PopulateTree();
 
                     if (_config.Profiles.Count == 0)
@@ -628,9 +621,12 @@ namespace RDP_Portal
                             return;
                         }
 
-                        // Replace current profiles with imported ones
-                        _config.Profiles = new BindingList<Profile>(list);
-                        _config.Save();
+                        // Import profiles
+                        foreach (var profile in list)
+                        {
+                            profile.Id = 0;
+                        }
+                        _config.ImportProfiles(list);
 
                         UpdateGroupList();
                         PopulateTree();
