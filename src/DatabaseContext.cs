@@ -16,80 +16,108 @@ namespace RDP_Portal
 
         public DatabaseContext()
         {
-            var dbExists = File.Exists(DatabasePath);
-
-            if (!dbExists)
+            try
             {
-                var directory = Path.GetDirectoryName(DatabasePath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                var dbExists = File.Exists(DatabasePath);
+
+                if (!dbExists)
                 {
-                    Directory.CreateDirectory(directory);
+                    Logger.Info("Database file not found, creating new database");
+
+                    var directory = Path.GetDirectoryName(DatabasePath);
+                    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                    {
+                        Directory.CreateDirectory(directory);
+                    }
+                    File.WriteAllBytes(DatabasePath, Array.Empty<byte>());
                 }
-                File.WriteAllBytes(DatabasePath, Array.Empty<byte>());
+
+                var connectionString = new SqliteConnectionStringBuilder
+                {
+                    DataSource = DatabasePath,
+                    Mode = SqliteOpenMode.ReadWriteCreate
+                }.ToString();
+
+                _connection = new SqliteConnection(connectionString);
+                _connection.Open();
+
+                SetEncryptionKey();
+                CreateTables();
+
+                Logger.Info("Database initialized successfully");
             }
-
-            var connectionString = new SqliteConnectionStringBuilder
+            catch (Exception ex)
             {
-                DataSource = DatabasePath,
-                Mode = SqliteOpenMode.ReadWriteCreate
-            }.ToString();
-
-            _connection = new SqliteConnection(connectionString);
-            _connection.Open();
-
-            SetEncryptionKey();
-            CreateTables();
+                Logger.Error("Failed to initialize database", ex);
+                throw;
+            }
         }
 
         private void SetEncryptionKey()
         {
-            using var command = _connection.CreateCommand();
-            command.CommandText = $"PRAGMA key = '{EncryptionKey}';";
-            command.ExecuteNonQuery();
+            try
+            {
+                using var command = _connection.CreateCommand();
+                command.CommandText = $"PRAGMA key = '{EncryptionKey}';";
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to set encryption key", ex);
+                throw;
+            }
         }
 
         private void CreateTables()
         {
-            using var command = _connection.CreateCommand();
-            command.CommandText = @"
-                CREATE TABLE IF NOT EXISTS Profiles (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Name TEXT NOT NULL DEFAULT '',
-                    Filename TEXT NOT NULL DEFAULT '',
-                    Computer TEXT NOT NULL DEFAULT '',
-                    Username TEXT NOT NULL DEFAULT '',
-                    EncryptedPassword TEXT NOT NULL DEFAULT '',
-                    Domain TEXT NOT NULL DEFAULT '',
-                    ProfileGroup TEXT NOT NULL DEFAULT '',
-                    DesktopWidth INTEGER NOT NULL DEFAULT 1280,
-                    DesktopHeight INTEGER NOT NULL DEFAULT 720,
-                    ScreenMode INTEGER NOT NULL DEFAULT 1,
-                    UseMultiMon INTEGER NOT NULL DEFAULT 0,
-                    ColorDepth INTEGER NOT NULL DEFAULT 24,
-                    AudioMode INTEGER NOT NULL DEFAULT 0,
-                    RedirectPrinters INTEGER NOT NULL DEFAULT 1,
-                    RedirectClipboard INTEGER NOT NULL DEFAULT 1,
-                    RedirectDrives INTEGER NOT NULL DEFAULT 0,
-                    RedirectPorts INTEGER NOT NULL DEFAULT 0,
-                    RedirectSmartCards INTEGER NOT NULL DEFAULT 0,
-                    PromptForCredentials INTEGER NOT NULL DEFAULT 0,
-                    AuthenticationLevel INTEGER NOT NULL DEFAULT 0,
-                    EnableCredSSPSupport INTEGER NOT NULL DEFAULT 1,
-                    CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
-                    UpdatedAt TEXT NOT NULL DEFAULT (datetime('now'))
-                );
+            try
+            {
+                using var command = _connection.CreateCommand();
+                command.CommandText = @"
+                    CREATE TABLE IF NOT EXISTS Profiles (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Name TEXT NOT NULL DEFAULT '',
+                        Filename TEXT NOT NULL DEFAULT '',
+                        Computer TEXT NOT NULL DEFAULT '',
+                        Username TEXT NOT NULL DEFAULT '',
+                        EncryptedPassword TEXT NOT NULL DEFAULT '',
+                        Domain TEXT NOT NULL DEFAULT '',
+                        ProfileGroup TEXT NOT NULL DEFAULT '',
+                        DesktopWidth INTEGER NOT NULL DEFAULT 1280,
+                        DesktopHeight INTEGER NOT NULL DEFAULT 720,
+                        ScreenMode INTEGER NOT NULL DEFAULT 1,
+                        UseMultiMon INTEGER NOT NULL DEFAULT 0,
+                        ColorDepth INTEGER NOT NULL DEFAULT 24,
+                        AudioMode INTEGER NOT NULL DEFAULT 0,
+                        RedirectPrinters INTEGER NOT NULL DEFAULT 1,
+                        RedirectClipboard INTEGER NOT NULL DEFAULT 1,
+                        RedirectDrives INTEGER NOT NULL DEFAULT 0,
+                        RedirectPorts INTEGER NOT NULL DEFAULT 0,
+                        RedirectSmartCards INTEGER NOT NULL DEFAULT 0,
+                        PromptForCredentials INTEGER NOT NULL DEFAULT 0,
+                        AuthenticationLevel INTEGER NOT NULL DEFAULT 0,
+                        EnableCredSSPSupport INTEGER NOT NULL DEFAULT 1,
+                        CreatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+                        UpdatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+                    );
 
-                CREATE TABLE IF NOT EXISTS Groups (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    GroupName TEXT NOT NULL UNIQUE
-                );
+                    CREATE TABLE IF NOT EXISTS Groups (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        GroupName TEXT NOT NULL UNIQUE
+                    );
 
-                CREATE TABLE IF NOT EXISTS Settings (
-                    Key TEXT PRIMARY KEY,
-                    Value TEXT NOT NULL
-                );
-            ";
-            command.ExecuteNonQuery();
+                    CREATE TABLE IF NOT EXISTS Settings (
+                        Key TEXT PRIMARY KEY,
+                        Value TEXT NOT NULL
+                    );
+                ";
+                command.ExecuteNonQuery();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to create database tables", ex);
+                throw;
+            }
         }
 
         public SqliteConnection GetConnection()
@@ -101,9 +129,16 @@ namespace RDP_Portal
         {
             if (!_disposed)
             {
-                _connection?.Close();
-                _connection?.Dispose();
-                _disposed = true;
+                try
+                {
+                    _connection?.Close();
+                    _connection?.Dispose();
+                    _disposed = true;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Error disposing database connection", ex);
+                }
             }
         }
     }

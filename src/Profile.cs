@@ -85,135 +85,141 @@ namespace RDP_Portal
         {
             var justCreated = false;
 
-            if (Filename == null || Filename == "")
+            try
             {
-                String name;
-                while (true)
+                if (String.IsNullOrWhiteSpace(Filename) || Filename == "")
                 {
-                    name = Config.rdpDir + "\\" + StringUtil.GenerateName(8) + ".rdp";
-                    if (!File.Exists(name))
+                    var name = Name;
+                    if (String.IsNullOrWhiteSpace(name))
                     {
-                        var file = File.Create(name);
-                        file.Close();
-                        justCreated = true;
-                        break;
+                        name = "profile-" + Guid.NewGuid().ToString().Substring(0, 8);
+                    }
+
+                    name = name.Trim();
+                    foreach (var c in Path.GetInvalidFileNameChars())
+                    {
+                        name = name.Replace(c, '_');
+                    }
+                    Filename = Path.Combine(Config.rdpDir, name + ".rdp");
+                }
+
+                if (!File.Exists(Filename))
+                {
+                    var file = File.Create(Filename);
+                    file.Close();
+                    justCreated = true;
+                    Logger.Info($"Created new RDP file: {Filename}");
+                }
+
+                var lines = File.ReadAllLines(Filename);
+                var removeList = new[] {
+                    "full address:",
+                    "username:",
+                    "password",
+                    "domain:",
+                    "winposstr",
+                    "desktopwidth:",
+                    "desktopheight:",
+                    "screen mode id:",
+                    "use multimon:",
+                    "session bpp:",
+                    "audiomode:",
+                    "redirectprinters:",
+                    "redirectclipboard:",
+                    "drivestoredirect:",
+                    "redirectdrives:",
+                    "redirectports:",
+                    "redirectsmartcards:",
+                    "prompt for credentials:",
+                    "authentication level:",
+                    "enablecredsspsupport:",
+                };
+
+                var result = new List<string>();
+
+                foreach (var line in lines)
+                {
+                    var ok = true;
+
+                    foreach (var startKeyword in removeList)
+                    {
+                        if (line.StartsWith(startKeyword))
+                        {
+                            ok = false;
+                            break;
+                        }
+                    }
+
+                    if (ok)
+                    {
+                        result.Add(line);
                     }
                 }
-                Filename = name;
-            }
 
-            if (!File.Exists(Filename))
-            {
-                var file = File.Create(Filename);
-                file.Close();
-                justCreated = true;
-            }
-
-            var lines = File.ReadAllLines(Filename);
-            var removeList = new[] {
-                "full address:",
-                "username:",
-                "password",
-                "domain:",
-                "winposstr",
-                "desktopwidth:",
-                "desktopheight:",
-                "screen mode id:",
-                "use multimon:",
-                "session bpp:",
-                "audiomode:",
-                "redirectprinters:",
-                "redirectclipboard:",
-                "drivestoredirect:",
-                "redirectdrives:",
-                "redirectports:",
-                "redirectsmartcards:",
-                "prompt for credentials:",
-                "authentication level:",
-                "enablecredsspsupport:",
-            };
-
-            var result = new List<string>();
-
-            foreach (var line in lines)
-            {
-                var ok = true;
-
-                foreach (var startKeyword in removeList)
+                if (Computer != "")
                 {
-                    if (line.StartsWith(startKeyword))
-                    {
-                        ok = false;
-                        break;
-                    }
+                    result.Add("full address:s:" + Computer);
                 }
 
-                if (ok)
+                if (Username != "")
                 {
-                    result.Add(line);
+                    result.Add("username:s:" + Username);
                 }
-            }
 
-            if (Computer != "")
+                if (Password != "")
+                {
+                    result.Add("password 51:b:" + GetRDPEncryptedPassword());
+                }
+
+                if (Domain != "")
+                {
+                    result.Add("domain:s:" + Domain);
+                }
+
+                result.Add("desktopwidth:i:" + DesktopWidth);
+                result.Add("desktopheight:i:" + DesktopHeight);
+                result.Add("screen mode id:i:" + ScreenMode);
+                result.Add("use multimon:i:" + UseMultiMon);
+                result.Add("session bpp:i:" + ColorDepth);
+                result.Add("audiomode:i:" + AudioMode);
+                result.Add("redirectprinters:i:" + RedirectPrinters);
+                result.Add("redirectclipboard:i:" + RedirectClipboard);
+                result.Add("redirectdrives:i:" + RedirectDrives);
+                result.Add("redirectports:i:" + RedirectPorts);
+                result.Add("redirectsmartcards:i:" + RedirectSmartCards);
+                result.Add("prompt for credentials:i:" + PromptForCredentials);
+                result.Add("authentication level:i:" + AuthenticationLevel);
+                result.Add("enablecredsspsupport:i:" + EnableCredSSPSupport);
+
+                var xBuffer = 10;
+                var yBuffer = 25;
+
+                Rectangle resolution = Screen.PrimaryScreen.Bounds;
+                var left = resolution.Size.Width / 2 - DesktopWidth / 2 - xBuffer;
+                var top = resolution.Size.Height / 2 - DesktopHeight / 2 - yBuffer;
+                var right = resolution.Size.Width / 2 + DesktopWidth / 2 + xBuffer;
+                var bottom = resolution.Size.Height / 2 + DesktopHeight / 2 + yBuffer;
+                result.Add($"winposstr:s:0,1,{left},{top},{right},{bottom}");
+
+                if (justCreated)
+                {
+                    result.Add("promptcredentialonce:i:0");
+                }
+
+                var writer = new StreamWriter(Filename, false);
+
+                foreach (var line in result)
+                {
+                    writer.WriteLine(line);
+                }
+
+                writer.Close();
+            }
+            catch (Exception ex)
             {
-                result.Add("full address:s:" + Computer);
+                Logger.Error($"Failed to prepare RDP file for profile: {Name}", ex);
+                throw;
             }
-
-            if (Username != "")
-            {
-                result.Add("username:s:" + Username);
-            }
-
-            if (Password != "")
-            {
-                result.Add("password 51:b:" + GetRDPEncryptedPassword());
-            }
-
-            if (Domain != "")
-            {
-                result.Add("domain:s:" + Domain);
-            }
-
-            // Advanced settings
-            result.Add("desktopwidth:i:" + DesktopWidth);
-            result.Add("desktopheight:i:" + DesktopHeight);
-            result.Add("screen mode id:i:" + ScreenMode);
-            result.Add("use multimon:i:" + UseMultiMon);
-            result.Add("session bpp:i:" + ColorDepth);
-            result.Add("audiomode:i:" + AudioMode);
-            result.Add("redirectprinters:i:" + RedirectPrinters);
-            result.Add("redirectclipboard:i:" + RedirectClipboard);
-            result.Add("redirectdrives:i:" + RedirectDrives);
-            result.Add("redirectports:i:" + RedirectPorts);
-            result.Add("redirectsmartcards:i:" + RedirectSmartCards);
-            result.Add("prompt for credentials:i:" + PromptForCredentials);
-            result.Add("authentication level:i:" + AuthenticationLevel);
-            result.Add("enablecredsspsupport:i:" + EnableCredSSPSupport);
-
-            // Reset the start position
-            var xBuffer = 10;
-            var yBuffer = 25;
-
-            Rectangle resolution = Screen.PrimaryScreen.Bounds;
-            var left = resolution.Size.Width / 2 - DesktopWidth / 2 - xBuffer;
-            var top = resolution.Size.Height / 2 - DesktopHeight / 2 - yBuffer;
-            var right = resolution.Size.Width / 2 + DesktopWidth / 2 + xBuffer;
-            var bottom = resolution.Size.Height / 2 + DesktopHeight / 2 + yBuffer;
-            result.Add($"winposstr:s:0,1,{left},{top},{right},{bottom}");
-
-            if (justCreated)
-            {
-                result.Add("promptcredentialonce:i:0");
-            }
-
-            var writer = new StreamWriter(Filename, false);
-
-            foreach (var line in result)
-            {
-                writer.WriteLine(line);
-            }
-
-            writer.Close();
         }
 
         [JsonIgnore] public bool JustAdded { get; set; } = false;
@@ -222,11 +228,15 @@ namespace RDP_Portal
         {
             try
             {
-                File.Delete(Filename);
+                if (File.Exists(Filename))
+                {
+                    File.Delete(Filename);
+                    Logger.Info($"Deleted RDP file: {Filename}");
+                }
             }
             catch (Exception ex)
             {
-
+                Logger.Error($"Failed to delete RDP file: {Filename}", ex);
             }
         }
     }

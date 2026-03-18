@@ -22,8 +22,17 @@ namespace RDP_Portal
 
         public MainForm()
         {
-            InitializeComponent();
-            _config = Config.GetConfig();
+            try
+            {
+                InitializeComponent();
+                _config = Config.GetConfig();
+                Logger.Info("MainForm initialized");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to initialize MainForm", ex);
+                throw;
+            }
         }
 
         [SupportedOSPlatform("windows")]
@@ -239,6 +248,7 @@ namespace RDP_Portal
             }
             catch (Exception ex)
             {
+                Logger.Error("Failed to open mstsc options", ex);
                 MessageBox.Show(ex.ToString());
             }
         }
@@ -250,6 +260,7 @@ namespace RDP_Portal
 
             if (String.IsNullOrWhiteSpace(profile.Computer) || String.IsNullOrWhiteSpace(profile.Computer))
             {
+                Logger.Warning("Invalid connection: Computer is empty");
                 MessageBox.Show("Invalid connection");
                 return;
             }
@@ -266,6 +277,7 @@ namespace RDP_Portal
 
             try
             {
+                Logger.Info($"Connecting to {profile.Computer} with profile {profile.Name}");
                 var exeProcess = Process.Start(startInfo) ?? throw new InvalidOperationException();
                 exeProcess.WaitForExit();
 
@@ -277,6 +289,7 @@ namespace RDP_Portal
             }
             catch (Exception ex)
             {
+                Logger.Error($"Failed to connect to {profile.Computer}", ex);
                 MessageBox.Show(ex.ToString());
             }
         }
@@ -419,27 +432,33 @@ namespace RDP_Portal
                 return;
             }
 
-            profile.JustAdded = false;
+            try
+            {
+                profile.JustAdded = false;
 
-            profile.Name = textBoxName.Text;
-            profile.Computer = textBoxComputer.Text;
-            profile.Username = textBoxUsername.Text;
-            profile.Password = textBoxPassword.Text;
-            profile.Domain = textBoxDomain.Text;
+                profile.Name = textBoxName.Text;
+                profile.Computer = textBoxComputer.Text;
+                profile.Username = textBoxUsername.Text;
+                profile.Password = textBoxPassword.Text;
+                profile.Domain = textBoxDomain.Text;
 
-            // Save advanced settings
-            SaveAdvancedSettings(profile);
+                SaveAdvancedSettings(profile);
 
-            profile.PrepareRdpFile();
+                profile.PrepareRdpFile();
 
-            _config.Save();
-            EditMode = false;
+                _config.Save();
+                EditMode = false;
 
-            // refresh group list in case user added a new group
-            UpdateGroupList();
+                Logger.Info($"Saved profile: {profile.Name}");
 
-            // refresh tree and keep selection
-            PopulateTree(selectProfile: profile);
+                UpdateGroupList();
+                PopulateTree(selectProfile: profile);
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to save profile: {profile.Name}", ex);
+                MessageBox.Show("Failed to save profile: " + ex.Message);
+            }
         }
 
         private void SaveAdvancedSettings(Profile profile)
@@ -594,12 +613,14 @@ namespace RDP_Portal
 
                         var json = Newtonsoft.Json.JsonConvert.SerializeObject(list, Newtonsoft.Json.Formatting.Indented);
                         System.IO.File.WriteAllText(sfd.FileName, json);
+                        Logger.Info($"Exported {list.Count} profiles to {sfd.FileName}");
                         MessageBox.Show("Exported profiles to " + sfd.FileName);
                     }
                 }
             }
             catch (Exception ex)
             {
+                Logger.Error("Export failed", ex);
                 MessageBox.Show("Export failed: " + ex.Message);
             }
         }
@@ -621,7 +642,6 @@ namespace RDP_Portal
                             return;
                         }
 
-                        // Import profiles
                         foreach (var profile in list)
                         {
                             profile.Id = 0;
@@ -631,12 +651,14 @@ namespace RDP_Portal
                         UpdateGroupList();
                         PopulateTree();
 
+                        Logger.Info($"Imported {list.Count} profiles from {ofd.FileName}");
                         MessageBox.Show("Imported " + list.Count + " profiles.");
                     }
                 }
             }
             catch (Exception ex)
             {
+                Logger.Error("Import failed", ex);
                 MessageBox.Show("Import failed: " + ex.Message);
             }
         }

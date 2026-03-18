@@ -38,90 +38,154 @@ namespace RDP_Portal
 
         public void ImportProfiles(List<Profile> profiles)
         {
-            foreach (var profile in profiles)
+            try
             {
-                profile.Id = 0;
-                profile.Id = _profileRepo.InsertProfile(profile);
-                Profiles.Add(profile);
+                foreach (var profile in profiles)
+                {
+                    profile.Id = 0;
+                    profile.Id = _profileRepo.InsertProfile(profile);
+                    Profiles.Add(profile);
+                }
+                Logger.Info($"Imported {profiles.Count} profiles");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to import profiles", ex);
+                throw;
             }
         }
 
         private void Load()
         {
-            if (!Directory.Exists(rdpDir))
+            try
             {
-                Directory.CreateDirectory(rdpDir);
+                if (!Directory.Exists(rdpDir))
+                {
+                    Directory.CreateDirectory(rdpDir);
+                    Logger.Info($"Created RDP directory: {rdpDir}");
+                }
+
+                var profiles = _profileRepo.GetAllProfiles();
+                Profiles = new BindingList<Profile>(profiles);
+
+                var groups = _profileRepo.GetAllGroups();
+                Groups = groups;
+
+                LoadSettings();
+
+                Logger.Info($"Loaded {Profiles.Count} profiles and {Groups.Count} groups");
             }
-
-            var profiles = _profileRepo.GetAllProfiles();
-            Profiles = new BindingList<Profile>(profiles);
-
-            var groups = _profileRepo.GetAllGroups();
-            Groups = groups;
-
-            LoadSettings();
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to load configuration", ex);
+                throw;
+            }
         }
 
         private void LoadSettings()
         {
-            var setting = _profileRepo.GetSetting("KeepOpening");
-            if (setting != null && bool.TryParse(setting, out bool keepOpening))
+            try
             {
-                KeepOpening = keepOpening;
+                var setting = _profileRepo.GetSetting("KeepOpening");
+                if (setting != null && bool.TryParse(setting, out bool keepOpening))
+                {
+                    KeepOpening = keepOpening;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to load settings", ex);
             }
         }
 
         public void Save()
         {
-            foreach (var profile in Profiles)
+            try
             {
-                if (profile.Id == 0)
+                foreach (var profile in Profiles)
                 {
-                    profile.Id = _profileRepo.InsertProfile(profile);
+                    if (profile.Id == 0)
+                    {
+                        profile.Id = _profileRepo.InsertProfile(profile);
+                        Logger.Debug($"Inserted new profile: {profile.Name}");
+                    }
+                    else
+                    {
+                        _profileRepo.UpdateProfile(profile);
+                        Logger.Debug($"Updated profile: {profile.Name}");
+                    }
                 }
-                else
-                {
-                    _profileRepo.UpdateProfile(profile);
-                }
-            }
 
-            _profileRepo.SetSetting("KeepOpening", KeepOpening.ToString());
+                _profileRepo.SetSetting("KeepOpening", KeepOpening.ToString());
+                Logger.Info("Configuration saved successfully");
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to save configuration", ex);
+                throw;
+            }
         }
 
         public void SaveGroups()
         {
-            var existingGroups = _profileRepo.GetAllGroups();
-            var existingNames = existingGroups.Select(g => g.GroupName).ToList();
-
-            foreach (var group in Groups)
+            try
             {
-                if (!existingNames.Contains(group.GroupName))
+                var existingGroups = _profileRepo.GetAllGroups();
+                var existingNames = existingGroups.Select(g => g.GroupName).ToList();
+
+                foreach (var group in Groups)
                 {
-                    _profileRepo.InsertGroup(group);
+                    if (!existingNames.Contains(group.GroupName))
+                    {
+                        _profileRepo.InsertGroup(group);
+                        Logger.Info($"Created new group: {group.GroupName}");
+                    }
+                }
+
+                foreach (var existing in existingGroups)
+                {
+                    if (!Groups.Any(g => g.GroupName == existing.GroupName))
+                    {
+                        _profileRepo.DeleteGroup(existing.Id);
+                        Logger.Info($"Deleted group: {existing.GroupName}");
+                    }
                 }
             }
-
-            foreach (var existing in existingGroups)
+            catch (Exception ex)
             {
-                if (!Groups.Any(g => g.GroupName == existing.GroupName))
-                {
-                    _profileRepo.DeleteGroup(existing.Id);
-                }
+                Logger.Error("Failed to save groups", ex);
+                throw;
             }
         }
 
         public void DeleteProfile(Profile profile)
         {
-            if (profile.Id > 0)
+            try
             {
-                _profileRepo.DeleteProfile(profile.Id);
+                if (profile.Id > 0)
+                {
+                    _profileRepo.DeleteProfile(profile.Id);
+                }
+                Profiles.Remove(profile);
+                Logger.Info($"Deleted profile: {profile.Name}");
             }
-            Profiles.Remove(profile);
+            catch (Exception ex)
+            {
+                Logger.Error($"Failed to delete profile: {profile.Name}", ex);
+                throw;
+            }
         }
 
         public void Dispose()
         {
-            _db?.Dispose();
+            try
+            {
+                _db?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Error disposing config", ex);
+            }
         }
     }
 }
