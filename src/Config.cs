@@ -33,10 +33,17 @@ namespace RDP_Portal {
                 _instance.Save();
             }
 
+            if (_instance.Groups == null) {
+                _instance.Groups = new List<string>();
+                _instance.Save();
+            }
+
             return _instance;
         }
 
         public BindingList<Profile> Profiles { get; set; }
+
+        public List<string> Groups { get; set; }
 
         public bool KeepOpening { get; set; } = true;
 

@@ -49,6 +49,11 @@ namespace RDP_Portal {
 
         public string Domain { get; set; }
 
+        // Optional grouping and tagging for profiles
+        public string Group { get; set; } = "";
+
+        // Tags removed per UX decision
+
         public void PrepareRdpFile() {
             var justCreated = false;
 
