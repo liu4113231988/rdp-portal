@@ -65,10 +65,10 @@ namespace RDP_Portal
                 var name = Prompt.ShowDialog("Group name:", "New Group");
                 if (!String.IsNullOrWhiteSpace(name))
                 {
-                    if (_config.Groups == null) _config.Groups = new List<string>();
-                    if (!_config.Groups.Contains(name))
+                    if (_config.Groups == null) _config.Groups = new List<Group>();
+                    if (!_config.Groups.Where(t => t.GroupName.Equals(name)).Any())
                     {
-                        _config.Groups.Add(name);
+                        _config.Groups.Add(new Group() { GroupName = name });
                         _config.Save();
                         PopulateTree();
                         MessageBox.Show("Group '" + name + "' created.");
@@ -106,33 +106,25 @@ namespace RDP_Portal
                     // group rename
                     var oldName = treeViewProfiles.SelectedNode.Text;
                     var newName = Prompt.ShowDialog("Rename group:", "Rename Group", oldName);
-                    if (!String.IsNullOrWhiteSpace(newName) && newName != oldName)
+                    // Use case-insensitive comparison to avoid duplicates with different casing
+                    if (!String.IsNullOrWhiteSpace(newName) && !string.Equals(newName, oldName, StringComparison.OrdinalIgnoreCase))
                     {
-                        // rename in profiles
-                        foreach (var p in _config.Profiles.Where(x => (x.Group ?? "") == oldName))
+                        // rename in profiles - match by exact value from tree (which came from PopulateTree)
+                        var group = _config.Groups.Where(t => t.GroupName == oldName).FirstOrDefault();
+                        if (group != null)
                         {
-                            p.Group = newName;
+                            group.GroupName = newName;
                         }
 
-                        // rename in persisted groups list
-                        if (_config.Groups == null) _config.Groups = new List<string>();
-                        if (_config.Groups.Contains(oldName))
+                        foreach (var p in _config.Profiles)
                         {
-                            if (!_config.Groups.Contains(newName))
+                            if (!String.IsNullOrWhiteSpace(p.Group) && p.Group == oldName)
                             {
-                                var idx = _config.Groups.IndexOf(oldName);
-                                _config.Groups[idx] = newName;
-                            }
-                            else
-                            {
-                                // remove oldName if newName already exists
-                                _config.Groups.Remove(oldName);
+                                p.Group = newName;
                             }
                         }
-                        else
-                        {
-                            if (!_config.Groups.Contains(newName)) _config.Groups.Add(newName);
-                        }
+
+                        _config.Groups = _config.Groups.OrderBy(t => t.GroupName).ToList();
 
                         _config.Save();
                         PopulateTree();
@@ -166,9 +158,14 @@ namespace RDP_Portal
                             _config.Profiles.Remove(ip);
                         }
 
-                        if (_config.Groups != null && _config.Groups.Contains(grp))
+                        if (_config.Groups != null)
                         {
-                            _config.Groups.Remove(grp);
+                            var group = _config.Groups.Where(t => t.GroupName == grp).FirstOrDefault();
+                            if (group != null)
+                            {
+                                _config.Groups.Remove(group);
+                            }
+
                         }
 
                         _config.Save();
@@ -317,6 +314,12 @@ namespace RDP_Portal
             textBoxUsername.Text = profile.Username;
             textBoxPassword.Text = profile.Password;
             textBoxDomain.Text = profile.Domain;
+            // Load raw .rdp content if available
+            try
+            {
+                textBoxRawRdp.Text = profile.RawRdp ?? "";
+            }
+            catch { }
         }
 
         private void buttonEdit_Click(object sender, EventArgs e)
@@ -387,6 +390,7 @@ namespace RDP_Portal
             profile.Username = textBoxUsername.Text;
             profile.Password = textBoxPassword.Text;
             profile.Domain = textBoxDomain.Text;
+            profile.RawRdp = textBoxRawRdp?.Text ?? "";
 
             profile.PrepareRdpFile();
 
@@ -398,6 +402,62 @@ namespace RDP_Portal
 
             // refresh tree and keep selection
             PopulateTree(selectProfile: profile);
+        }
+
+        private void buttonImportRdp_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (var ofd = new OpenFileDialog())
+                {
+                    ofd.Filter = "RDP files (*.rdp)|*.rdp|All files (*.*)|*.*";
+                    if (ofd.ShowDialog(this) == DialogResult.OK)
+                    {
+                        var content = System.IO.File.ReadAllText(ofd.FileName);
+                        textBoxRawRdp.Text = content;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Import RDP failed: " + ex.Message);
+            }
+        }
+
+        private void buttonExportRdp_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (var sfd = new SaveFileDialog())
+                {
+                    sfd.Filter = "RDP files (*.rdp)|*.rdp|All files (*.*)|*.*";
+                    sfd.FileName = "profile.rdp";
+                    if (sfd.ShowDialog(this) == DialogResult.OK)
+                    {
+                        System.IO.File.WriteAllText(sfd.FileName, textBoxRawRdp.Text);
+                        MessageBox.Show("Exported .rdp to " + sfd.FileName);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Export RDP failed: " + ex.Message);
+            }
+        }
+
+        private void buttonPreviewRdp_Click(object sender, EventArgs e)
+        {
+            // Preview: write to a temp file and open with notepad for quick inspection
+            try
+            {
+                var tmp = System.IO.Path.GetTempFileName() + ".rdp";
+                System.IO.File.WriteAllText(tmp, textBoxRawRdp.Text);
+                Process.Start(new ProcessStartInfo { FileName = "notepad.exe", Arguments = tmp, UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Preview failed: " + ex.Message);
+            }
         }
 
         private void checkBoxKeepOpening_CheckedChanged(object sender, EventArgs e)
@@ -431,17 +491,17 @@ namespace RDP_Portal
             treeViewProfiles.Nodes.Clear();
 
             // Build group set from profiles and persisted groups so empty groups show up
-            var groupSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var groupSet = new HashSet<Group>();
 
-            foreach (var p in _config.Profiles)
-            {
-                var gname = String.IsNullOrWhiteSpace(p.Group) ? "Ungrouped" : p.Group;
-                groupSet.Add(gname);
-            }
+            //foreach (var p in _config.Profiles)
+            //{
+            //    var gname = String.IsNullOrWhiteSpace(p.Group) ? "Ungrouped" : p.Group;
+            //    groupSet.Add(new Group() { GroupName = gname });
+            //}
 
             if (_config.Groups != null)
             {
-                foreach (var g in _config.Groups.Where(x => !String.IsNullOrWhiteSpace(x)))
+                foreach (var g in _config.Groups.Where(x => !String.IsNullOrWhiteSpace(x.GroupName)))
                 {
                     groupSet.Add(g);
                 }
@@ -449,11 +509,11 @@ namespace RDP_Portal
 
             var groupNames = groupSet.OrderBy(x => x);
 
-            foreach (var gname in groupNames)
+            foreach (var group in groupNames)
             {
-                var groupNode = new TreeNode(gname);
+                var groupNode = new TreeNode(group.GroupName);
 
-                var profilesInGroup = _config.Profiles.Where(p => (String.IsNullOrWhiteSpace(p.Group) ? "Ungrouped" : p.Group) == gname);
+                var profilesInGroup = _config.Profiles.Where(p => (string.IsNullOrWhiteSpace(p.Group) ? "Ungrouped" : p.Group) == group.GroupName);
                 foreach (var profile in profilesInGroup)
                 {
                     var node = new TreeNode(profile.Name);
@@ -484,6 +544,7 @@ namespace RDP_Portal
                 }
             }
         }
+
 
         private void buttonExport_Click(object sender, EventArgs e)
         {

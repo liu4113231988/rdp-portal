@@ -5,13 +5,18 @@ using System.IO;
 using System.Windows.Forms;
 using Newtonsoft.Json;
 
-namespace RDP_Portal {
-    public class Profile {
+namespace RDP_Portal
+{
+    public class Profile
+    {
         private string _name = "";
 
-        public string Name {
-            get {
-                if (_name == "") {
+        public string Name
+        {
+            get
+            {
+                if (_name == "")
+                {
                     return "<New Profile>";
                 }
                 return _name;
@@ -26,7 +31,8 @@ namespace RDP_Portal {
         /**
          * Encrypted Password used by mstsc.exe
          */
-        public string GetRDPEncryptedPassword() {
+        public string GetRDPEncryptedPassword()
+        {
             var mstscpw = new Mstscpw();
             return mstscpw.encryptpw(this.Password);
         }
@@ -37,9 +43,12 @@ namespace RDP_Portal {
         public string EncryptedPassword { get; set; } = "";
 
         [JsonIgnore]
-        public string Password {
-            get {
-                if (EncryptedPassword == "") {
+        public string Password
+        {
+            get
+            {
+                if (EncryptedPassword == "")
+                {
                     return EncryptedPassword;
                 }
                 return EncryptedPassword.Decrypt();
@@ -52,16 +61,24 @@ namespace RDP_Portal {
         // Optional grouping and tagging for profiles
         public string Group { get; set; } = "";
 
+        // Raw .rdp content (optional). If present, this will be written directly to the .rdp file
+        // and will be preserved in exported JSON configs.
+        public string RawRdp { get; set; } = "";
+
         // Tags removed per UX decision
 
-        public void PrepareRdpFile() {
+        public void PrepareRdpFile()
+        {
             var justCreated = false;
 
-            if (Filename == null || Filename == "") {
+            if (Filename == null || Filename == "")
+            {
                 String name;
-                while (true) {
+                while (true)
+                {
                     name = Config.rdpDir + "\\" + StringUtil.GenerateName(8) + ".rdp";
-                    if (!File.Exists(name)) {
+                    if (!File.Exists(name))
+                    {
                         var file = File.Create(name);
                         file.Close();
                         justCreated = true;
@@ -71,14 +88,15 @@ namespace RDP_Portal {
                 Filename = name;
             }
 
-            if (!File.Exists(Filename)) {
+            if (!File.Exists(Filename))
+            {
                 var file = File.Create(Filename);
                 file.Close();
                 justCreated = true;
             }
 
             var lines = File.ReadAllLines(Filename);
-            var removeList = new [] {
+            var removeList = new[] {
                 "full address:",
                 "username:",
                 "password",
@@ -90,51 +108,64 @@ namespace RDP_Portal {
             var width = 1280;
             var height = 720;
 
-            foreach (var line in lines) {
+            foreach (var line in lines)
+            {
                 var ok = true;
 
-                foreach (var startKeyword in removeList) {
-                    if (line.StartsWith(startKeyword)) {
+                foreach (var startKeyword in removeList)
+                {
+                    if (line.StartsWith(startKeyword))
+                    {
                         ok = false;
                         break;
                     }
                 }
 
                 // Extract Width & Height
-                try {
+                try
+                {
                     int w = width, h = height;
 
-                    if (line.StartsWith("desktopwidth:i:")) {
+                    if (line.StartsWith("desktopwidth:i:"))
+                    {
                         w = int.Parse(line.Replace("desktopwidth:i:", ""));
                     }
-                    if (line.StartsWith("desktopheight:i:")) {
+                    if (line.StartsWith("desktopheight:i:"))
+                    {
                         h = int.Parse(line.Replace("desktopheight:i:", ""));
                     }
                     width = w;
                     height = h;
-                } catch (Exception ex) {
+                }
+                catch (Exception ex)
+                {
 
                 }
 
 
-                if (ok) {
+                if (ok)
+                {
                     result.Add(line);
                 }
             }
 
-            if (Computer != "") {
+            if (Computer != "")
+            {
                 result.Add("full address:s:" + Computer);
             }
 
-            if (Username != "") {
+            if (Username != "")
+            {
                 result.Add("username:s:" + Username);
             }
 
-            if (Password != "") {
+            if (Password != "")
+            {
                 result.Add("password 51:b:" + GetRDPEncryptedPassword());
             }
 
-            if (Domain != "") {
+            if (Domain != "")
+            {
                 result.Add("domain:s:" + Domain);
             }
 
@@ -149,7 +180,8 @@ namespace RDP_Portal {
             var bottom = resolution.Size.Height / 2 + height / 2 + yBuffer;
             result.Add($"winposstr:s:0,1,{left},{top},{right},{bottom}");
 
-            if (justCreated) {
+            if (justCreated)
+            {
                 result.Add("desktopwidth:i:1280");
                 result.Add("desktopheight:i:720");
                 result.Add("use multimon:i:0");
@@ -161,7 +193,16 @@ namespace RDP_Portal {
 
             var writer = new StreamWriter(Filename, false);
 
-            foreach (var line in result) {
+            // If RawRdp is provided, write it directly (user-edited .rdp content takes precedence)
+            if (!String.IsNullOrWhiteSpace(RawRdp))
+            {
+                writer.Close();
+                System.IO.File.WriteAllText(Filename, RawRdp);
+                return;
+            }
+
+            foreach (var line in result)
+            {
                 writer.WriteLine(line);
             }
 
@@ -170,10 +211,14 @@ namespace RDP_Portal {
 
         [JsonIgnore] public bool JustAdded { get; set; } = false;
 
-        public void Delete() {
-            try {
+        public void Delete()
+        {
+            try
+            {
                 File.Delete(Filename);
-            } catch (Exception ex) {
+            }
+            catch (Exception ex)
+            {
 
             }
         }

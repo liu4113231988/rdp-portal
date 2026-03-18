@@ -38,6 +38,11 @@
             textBoxPassword = new System.Windows.Forms.TextBox();
             textBoxDomain = new System.Windows.Forms.TextBox();
             groupBox1 = new System.Windows.Forms.GroupBox();
+            groupBoxAdvanced = new System.Windows.Forms.GroupBox();
+            textBoxRawRdp = new System.Windows.Forms.TextBox();
+            buttonImportRdp = new System.Windows.Forms.Button();
+            buttonExportRdp = new System.Windows.Forms.Button();
+            buttonPreviewRdp = new System.Windows.Forms.Button();
             buttonSave = new System.Windows.Forms.Button();
             buttonOptions = new System.Windows.Forms.Button();
             pictureBox1 = new System.Windows.Forms.PictureBox();
@@ -175,6 +180,57 @@
             groupBox1.TabStop = false;
             groupBox1.Text = "Connection";
             // 
+            // groupBoxAdvanced
+            // 
+            groupBoxAdvanced.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            groupBoxAdvanced.Location = new System.Drawing.Point(205, 410);
+            groupBoxAdvanced.Margin = new System.Windows.Forms.Padding(4);
+            groupBoxAdvanced.Name = "groupBoxAdvanced";
+            groupBoxAdvanced.Padding = new System.Windows.Forms.Padding(4);
+            groupBoxAdvanced.Size = new System.Drawing.Size(328, 88);
+            groupBoxAdvanced.TabIndex = 30;
+            groupBoxAdvanced.TabStop = false;
+            groupBoxAdvanced.Text = "Advanced RDP Parameters";
+
+            // textBoxRawRdp
+            textBoxRawRdp.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            textBoxRawRdp.Location = new System.Drawing.Point(8, 22);
+            textBoxRawRdp.Multiline = true;
+            textBoxRawRdp.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            textBoxRawRdp.Name = "textBoxRawRdp";
+            textBoxRawRdp.Size = new System.Drawing.Size(228, 56);
+            textBoxRawRdp.TabIndex = 31;
+
+            // buttonImportRdp
+            buttonImportRdp.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            buttonImportRdp.Location = new System.Drawing.Point(244, 22);
+            buttonImportRdp.Name = "buttonImportRdp";
+            buttonImportRdp.Size = new System.Drawing.Size(72, 26);
+            buttonImportRdp.TabIndex = 32;
+            buttonImportRdp.Text = "Import";
+            buttonImportRdp.UseVisualStyleBackColor = true;
+            buttonImportRdp.Click += buttonImportRdp_Click;
+
+            // buttonExportRdp
+            buttonExportRdp.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            buttonExportRdp.Location = new System.Drawing.Point(244, 50);
+            buttonExportRdp.Name = "buttonExportRdp";
+            buttonExportRdp.Size = new System.Drawing.Size(72, 26);
+            buttonExportRdp.TabIndex = 33;
+            buttonExportRdp.Text = "Export";
+            buttonExportRdp.UseVisualStyleBackColor = true;
+            buttonExportRdp.Click += buttonExportRdp_Click;
+
+            // buttonPreviewRdp
+            buttonPreviewRdp.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
+            buttonPreviewRdp.Location = new System.Drawing.Point(244, 78);
+            buttonPreviewRdp.Name = "buttonPreviewRdp";
+            buttonPreviewRdp.Size = new System.Drawing.Size(72, 26);
+            buttonPreviewRdp.TabIndex = 34;
+            buttonPreviewRdp.Text = "Preview";
+            buttonPreviewRdp.UseVisualStyleBackColor = true;
+            buttonPreviewRdp.Click += buttonPreviewRdp_Click;
+            // 
             // buttonSave
             // 
             buttonSave.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right;
@@ -278,6 +334,13 @@
             treeViewProfiles.TabIndex = 0;
             treeViewProfiles.AfterSelect += treeViewProfiles_AfterSelect;
             treeViewProfiles.NodeMouseDoubleClick += treeViewProfiles_NodeMouseDoubleClick;
+            
+            // add advanced groupbox children
+            groupBoxAdvanced.Controls.Add(textBoxRawRdp);
+            groupBoxAdvanced.Controls.Add(buttonImportRdp);
+            groupBoxAdvanced.Controls.Add(buttonExportRdp);
+            groupBoxAdvanced.Controls.Add(buttonPreviewRdp);
+
             // 
             // MainForm
             // 
@@ -292,6 +355,7 @@
             Controls.Add(buttonOptions);
             Controls.Add(buttonImport);
             Controls.Add(buttonExport);
+            Controls.Add(groupBoxAdvanced);
             Controls.Add(buttonSave);
             Controls.Add(groupBox1);
             Controls.Add(buttonConnect);
@@ -348,6 +412,11 @@
         private System.Windows.Forms.CheckBox checkBoxKeepOpening;
         private System.Windows.Forms.Button buttonImport;
         private System.Windows.Forms.Button buttonExport;
+        private System.Windows.Forms.GroupBox groupBoxAdvanced;
+        private System.Windows.Forms.TextBox textBoxRawRdp;
+        private System.Windows.Forms.Button buttonImportRdp;
+        private System.Windows.Forms.Button buttonExportRdp;
+        private System.Windows.Forms.Button buttonPreviewRdp;
         // Group/Filter UI removed; groups now managed in tree view
 
         #endregion

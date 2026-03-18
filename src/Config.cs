@@ -4,37 +4,45 @@ using System.ComponentModel;
 using System.IO;
 using Newtonsoft.Json;
 
-namespace RDP_Portal {
-    public class Config {
+namespace RDP_Portal
+{
+    public class Config
+    {
 
         private static Config? _instance;
         public static string filename = "config.json";
         public static string rdpDir = "rdp-files";
-        
-        public static Config GetConfig() {
-            if (!File.Exists(filename)) {
+
+        public static Config GetConfig()
+        {
+            if (!File.Exists(filename))
+            {
                 File.AppendAllText(filename, "{}");
             }
 
-            if (!Directory.Exists(rdpDir)) {
+            if (!Directory.Exists(rdpDir))
+            {
                 Directory.CreateDirectory(rdpDir);
             }
 
             var json = File.ReadAllText(filename);
-            
+
             _instance = JsonConvert.DeserializeObject<Config>(json);
 
-            if (_instance == null) {
+            if (_instance == null)
+            {
                 throw new Exception("Cannot read config.json");
             }
-            
-            if (_instance.Profiles == null) {
+
+            if (_instance.Profiles == null)
+            {
                 _instance.Profiles = new BindingList<Profile>();
                 _instance.Save();
             }
 
-            if (_instance.Groups == null) {
-                _instance.Groups = new List<string>();
+            if (_instance.Groups == null)
+            {
+                _instance.Groups = new List<Group>();
                 _instance.Save();
             }
 
@@ -43,11 +51,12 @@ namespace RDP_Portal {
 
         public BindingList<Profile> Profiles { get; set; }
 
-        public List<string> Groups { get; set; }
+        public List<Group> Groups { get; set; }
 
         public bool KeepOpening { get; set; } = true;
 
-        public void Save() {
+        public void Save()
+        {
             var json = JsonConvert.SerializeObject(this, Formatting.Indented);
             File.WriteAllText(filename, json);
         }
