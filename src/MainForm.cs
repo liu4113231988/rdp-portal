@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -201,6 +201,17 @@ namespace RDP_Portal
                 textBoxUsername.Enabled = value;
                 textBoxPassword.Enabled = value;
                 textBoxDomain.Enabled = value;
+
+                comboBoxResolution.Enabled = value;
+                comboBoxScreenMode.Enabled = value;
+                comboBoxColorDepth.Enabled = value;
+                comboBoxAudioMode.Enabled = value;
+                checkBoxRedirectPrinters.Enabled = value;
+                checkBoxRedirectClipboard.Enabled = value;
+                checkBoxRedirectDrives.Enabled = value;
+                checkBoxRedirectPorts.Enabled = value;
+                checkBoxRedirectSmartCards.Enabled = value;
+                checkBoxPromptCredentials.Enabled = value;
             }
         }
 
@@ -314,12 +325,44 @@ namespace RDP_Portal
             textBoxUsername.Text = profile.Username;
             textBoxPassword.Text = profile.Password;
             textBoxDomain.Text = profile.Domain;
-            // Load raw .rdp content if available
-            try
-            {
-                textBoxRawRdp.Text = profile.RawRdp ?? "";
-            }
-            catch { }
+
+            // Load advanced settings
+            LoadAdvancedSettings(profile);
+        }
+
+        private void LoadAdvancedSettings(Profile profile)
+        {
+            // Resolution
+            string resolution = $"{profile.DesktopWidth}x{profile.DesktopHeight}";
+            int resIndex = comboBoxResolution.Items.IndexOf(resolution);
+            if (resIndex >= 0)
+                comboBoxResolution.SelectedIndex = resIndex;
+            else
+                comboBoxResolution.SelectedIndex = 2; // Default 1280x720
+
+            // Screen mode: 0=Windowed, 1=Full Screen, 2=All Monitors
+            if (profile.ScreenMode == 2 && profile.UseMultiMon == 1)
+                comboBoxScreenMode.SelectedIndex = 2; // All Monitors
+            else if (profile.ScreenMode == 2)
+                comboBoxScreenMode.SelectedIndex = 1; // Full Screen
+            else
+                comboBoxScreenMode.SelectedIndex = 0; // Windowed
+
+            // Color depth: 15, 16, 24, 32
+            int[] colorDepths = { 15, 16, 24, 32 };
+            int cdIndex = Array.IndexOf(colorDepths, profile.ColorDepth);
+            comboBoxColorDepth.SelectedIndex = cdIndex >= 0 ? cdIndex : 2; // Default 24 bit
+
+            // Audio mode: 0=Play locally, 1=Play on remote, 2=Do not play
+            comboBoxAudioMode.SelectedIndex = profile.AudioMode >= 0 && profile.AudioMode <= 2 ? profile.AudioMode : 0;
+
+            // Redirect options
+            checkBoxRedirectPrinters.Checked = profile.RedirectPrinters == 1;
+            checkBoxRedirectClipboard.Checked = profile.RedirectClipboard == 1;
+            checkBoxRedirectDrives.Checked = profile.RedirectDrives == 1;
+            checkBoxRedirectPorts.Checked = profile.RedirectPorts == 1;
+            checkBoxRedirectSmartCards.Checked = profile.RedirectSmartCards == 1;
+            checkBoxPromptCredentials.Checked = profile.PromptForCredentials == 1;
         }
 
         private void buttonEdit_Click(object sender, EventArgs e)
@@ -390,7 +433,9 @@ namespace RDP_Portal
             profile.Username = textBoxUsername.Text;
             profile.Password = textBoxPassword.Text;
             profile.Domain = textBoxDomain.Text;
-            profile.RawRdp = textBoxRawRdp?.Text ?? "";
+
+            // Save advanced settings
+            SaveAdvancedSettings(profile);
 
             profile.PrepareRdpFile();
 
@@ -404,60 +449,52 @@ namespace RDP_Portal
             PopulateTree(selectProfile: profile);
         }
 
-        private void buttonImportRdp_Click(object sender, EventArgs e)
+        private void SaveAdvancedSettings(Profile profile)
         {
-            try
+            // Resolution
+            if (comboBoxResolution.SelectedIndex >= 0)
             {
-                using (var ofd = new OpenFileDialog())
+                string resolution = comboBoxResolution.SelectedItem.ToString();
+                var parts = resolution.Split('x');
+                if (parts.Length == 2)
                 {
-                    ofd.Filter = "RDP files (*.rdp)|*.rdp|All files (*.*)|*.*";
-                    if (ofd.ShowDialog(this) == DialogResult.OK)
-                    {
-                        var content = System.IO.File.ReadAllText(ofd.FileName);
-                        textBoxRawRdp.Text = content;
-                    }
+                    profile.DesktopWidth = int.Parse(parts[0]);
+                    profile.DesktopHeight = int.Parse(parts[1]);
                 }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Import RDP failed: " + ex.Message);
-            }
-        }
 
-        private void buttonExportRdp_Click(object sender, EventArgs e)
-        {
-            try
+            // Screen mode
+            switch (comboBoxScreenMode.SelectedIndex)
             {
-                using (var sfd = new SaveFileDialog())
-                {
-                    sfd.Filter = "RDP files (*.rdp)|*.rdp|All files (*.*)|*.*";
-                    sfd.FileName = "profile.rdp";
-                    if (sfd.ShowDialog(this) == DialogResult.OK)
-                    {
-                        System.IO.File.WriteAllText(sfd.FileName, textBoxRawRdp.Text);
-                        MessageBox.Show("Exported .rdp to " + sfd.FileName);
-                    }
-                }
+                case 0: // Windowed
+                    profile.ScreenMode = 1;
+                    profile.UseMultiMon = 0;
+                    break;
+                case 1: // Full Screen
+                    profile.ScreenMode = 2;
+                    profile.UseMultiMon = 0;
+                    break;
+                case 2: // All Monitors
+                    profile.ScreenMode = 2;
+                    profile.UseMultiMon = 1;
+                    break;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Export RDP failed: " + ex.Message);
-            }
-        }
 
-        private void buttonPreviewRdp_Click(object sender, EventArgs e)
-        {
-            // Preview: write to a temp file and open with notepad for quick inspection
-            try
-            {
-                var tmp = System.IO.Path.GetTempFileName() + ".rdp";
-                System.IO.File.WriteAllText(tmp, textBoxRawRdp.Text);
-                Process.Start(new ProcessStartInfo { FileName = "notepad.exe", Arguments = tmp, UseShellExecute = true });
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Preview failed: " + ex.Message);
-            }
+            // Color depth
+            int[] colorDepths = { 15, 16, 24, 32 };
+            if (comboBoxColorDepth.SelectedIndex >= 0)
+                profile.ColorDepth = colorDepths[comboBoxColorDepth.SelectedIndex];
+
+            // Audio mode
+            profile.AudioMode = comboBoxAudioMode.SelectedIndex;
+
+            // Redirect options
+            profile.RedirectPrinters = checkBoxRedirectPrinters.Checked ? 1 : 0;
+            profile.RedirectClipboard = checkBoxRedirectClipboard.Checked ? 1 : 0;
+            profile.RedirectDrives = checkBoxRedirectDrives.Checked ? 1 : 0;
+            profile.RedirectPorts = checkBoxRedirectPorts.Checked ? 1 : 0;
+            profile.RedirectSmartCards = checkBoxRedirectSmartCards.Checked ? 1 : 0;
+            profile.PromptForCredentials = checkBoxPromptCredentials.Checked ? 1 : 0;
         }
 
         private void checkBoxKeepOpening_CheckedChanged(object sender, EventArgs e)

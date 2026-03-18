@@ -61,9 +61,21 @@ namespace RDP_Portal
         // Optional grouping and tagging for profiles
         public string Group { get; set; } = "";
 
-        // Raw .rdp content (optional). If present, this will be written directly to the .rdp file
-        // and will be preserved in exported JSON configs.
-        public string RawRdp { get; set; } = "";
+        // Advanced settings
+        public int DesktopWidth { get; set; } = 1280;
+        public int DesktopHeight { get; set; } = 720;
+        public int ScreenMode { get; set; } = 1;
+        public int UseMultiMon { get; set; } = 0;
+        public int ColorDepth { get; set; } = 24;
+        public int AudioMode { get; set; } = 0;
+        public int RedirectPrinters { get; set; } = 1;
+        public int RedirectClipboard { get; set; } = 1;
+        public int RedirectDrives { get; set; } = 0;
+        public int RedirectPorts { get; set; } = 0;
+        public int RedirectSmartCards { get; set; } = 0;
+        public int PromptForCredentials { get; set; } = 0;
+        public int AuthenticationLevel { get; set; } = 0;
+        public int EnableCredSSPSupport { get; set; } = 1;
 
         // Tags removed per UX decision
 
@@ -102,11 +114,24 @@ namespace RDP_Portal
                 "password",
                 "domain:",
                 "winposstr",
+                "desktopwidth:",
+                "desktopheight:",
+                "screen mode id:",
+                "use multimon:",
+                "session bpp:",
+                "audiomode:",
+                "redirectprinters:",
+                "redirectclipboard:",
+                "drivestoredirect:",
+                "redirectdrives:",
+                "redirectports:",
+                "redirectsmartcards:",
+                "prompt for credentials:",
+                "authentication level:",
+                "enablecredsspsupport:",
             };
 
             var result = new List<string>();
-            var width = 1280;
-            var height = 720;
 
             foreach (var line in lines)
             {
@@ -120,28 +145,6 @@ namespace RDP_Portal
                         break;
                     }
                 }
-
-                // Extract Width & Height
-                try
-                {
-                    int w = width, h = height;
-
-                    if (line.StartsWith("desktopwidth:i:"))
-                    {
-                        w = int.Parse(line.Replace("desktopwidth:i:", ""));
-                    }
-                    if (line.StartsWith("desktopheight:i:"))
-                    {
-                        h = int.Parse(line.Replace("desktopheight:i:", ""));
-                    }
-                    width = w;
-                    height = h;
-                }
-                catch (Exception ex)
-                {
-
-                }
-
 
                 if (ok)
                 {
@@ -169,37 +172,39 @@ namespace RDP_Portal
                 result.Add("domain:s:" + Domain);
             }
 
+            // Advanced settings
+            result.Add("desktopwidth:i:" + DesktopWidth);
+            result.Add("desktopheight:i:" + DesktopHeight);
+            result.Add("screen mode id:i:" + ScreenMode);
+            result.Add("use multimon:i:" + UseMultiMon);
+            result.Add("session bpp:i:" + ColorDepth);
+            result.Add("audiomode:i:" + AudioMode);
+            result.Add("redirectprinters:i:" + RedirectPrinters);
+            result.Add("redirectclipboard:i:" + RedirectClipboard);
+            result.Add("redirectdrives:i:" + RedirectDrives);
+            result.Add("redirectports:i:" + RedirectPorts);
+            result.Add("redirectsmartcards:i:" + RedirectSmartCards);
+            result.Add("prompt for credentials:i:" + PromptForCredentials);
+            result.Add("authentication level:i:" + AuthenticationLevel);
+            result.Add("enablecredsspsupport:i:" + EnableCredSSPSupport);
+
             // Reset the start position
             var xBuffer = 10;
             var yBuffer = 25;
 
             Rectangle resolution = Screen.PrimaryScreen.Bounds;
-            var left = resolution.Size.Width / 2 - width / 2 - xBuffer;
-            var top = resolution.Size.Height / 2 - height / 2 - yBuffer;
-            var right = resolution.Size.Width / 2 + width / 2 + xBuffer;
-            var bottom = resolution.Size.Height / 2 + height / 2 + yBuffer;
+            var left = resolution.Size.Width / 2 - DesktopWidth / 2 - xBuffer;
+            var top = resolution.Size.Height / 2 - DesktopHeight / 2 - yBuffer;
+            var right = resolution.Size.Width / 2 + DesktopWidth / 2 + xBuffer;
+            var bottom = resolution.Size.Height / 2 + DesktopHeight / 2 + yBuffer;
             result.Add($"winposstr:s:0,1,{left},{top},{right},{bottom}");
 
             if (justCreated)
             {
-                result.Add("desktopwidth:i:1280");
-                result.Add("desktopheight:i:720");
-                result.Add("use multimon:i:0");
-                result.Add("screen mode id:i:1");
-                result.Add("authentication level:i:0");
-                result.Add("prompt for credentials:i:0");
                 result.Add("promptcredentialonce:i:0");
             }
 
             var writer = new StreamWriter(Filename, false);
-
-            // If RawRdp is provided, write it directly (user-edited .rdp content takes precedence)
-            if (!String.IsNullOrWhiteSpace(RawRdp))
-            {
-                writer.Close();
-                System.IO.File.WriteAllText(Filename, RawRdp);
-                return;
-            }
 
             foreach (var line in result)
             {

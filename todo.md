@@ -1,3 +1,11 @@
+<!--
+ * @Author: liucy liu4113231988@163.com
+ * @Date: 2026-03-18 18:03:19
+ * @LastEditors: liucy liu4113231988@163.com
+ * @LastEditTime: 2026-03-18 18:25:03
+ * @FilePath: \rdp-portal\todo.md
+ * @Description: 这是默认设置,请设置`customMade`, 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
+-->
 # RDP-Portal 缺少的功能清单
 
 说明：这是针对当前项目作为轻量级远程桌面管理工具（RDP 管理器）所建议的缺失功能和改进点，按优先级与类别组织，便于后续实现与拆分。
@@ -26,7 +34,6 @@
     - 日志功能能导出用于故障诊断，且凭据未明文写入导出文件。
 - UI/可用性
   - 右侧面板使用响应式布局（TableLayoutPanel）以保证各宽度下对齐一致
-  - 批量操作（批量删除、批量连接或导出）
   - 托盘图标与最小化到托盘选项（在后台保持运行）
 
 中优先级（功能增强）
