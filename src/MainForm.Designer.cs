@@ -43,10 +43,9 @@ namespace RDP_Portal {
             checkBoxPromptCredentials = new System.Windows.Forms.CheckBox();
             panelButtons = new System.Windows.Forms.Panel();
             buttonConnect = new System.Windows.Forms.Button();
-            buttonOptions = new System.Windows.Forms.Button();
             buttonCancel = new System.Windows.Forms.Button();
+            buttonOptions = new System.Windows.Forms.Button();
             buttonSave = new System.Windows.Forms.Button();
-            buttonEdit = new System.Windows.Forms.Button();
             panelBottom = new System.Windows.Forms.Panel();
             buttonImport = new System.Windows.Forms.Button();
             buttonExport = new System.Windows.Forms.Button();
@@ -391,10 +390,9 @@ namespace RDP_Portal {
             panelButtons.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             tableLayoutPanelSettings.SetColumnSpan(panelButtons, 3);
             panelButtons.Controls.Add(buttonConnect);
-            panelButtons.Controls.Add(buttonOptions);
             panelButtons.Controls.Add(buttonCancel);
+            panelButtons.Controls.Add(buttonOptions);
             panelButtons.Controls.Add(buttonSave);
-            panelButtons.Controls.Add(buttonEdit);
             panelButtons.Location = new System.Drawing.Point(3, 292);
             panelButtons.Name = "panelButtons";
             panelButtons.Size = new System.Drawing.Size(410, 39);
@@ -412,6 +410,18 @@ namespace RDP_Portal {
             buttonConnect.UseVisualStyleBackColor = true;
             buttonConnect.Click += buttonConnect_Click;
             // 
+            // buttonCancel
+            // 
+            buttonCancel.Anchor = System.Windows.Forms.AnchorStyles.Right;
+            buttonCancel.Location = new System.Drawing.Point(245, 5);
+            buttonCancel.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            buttonCancel.Name = "buttonCancel";
+            buttonCancel.Size = new System.Drawing.Size(80, 29);
+            buttonCancel.TabIndex = 2;
+            buttonCancel.Text = "Cancel";
+            buttonCancel.UseVisualStyleBackColor = true;
+            buttonCancel.Click += buttonCancel_Click;
+            // 
             // buttonOptions
             // 
             buttonOptions.Anchor = System.Windows.Forms.AnchorStyles.Right;
@@ -424,22 +434,10 @@ namespace RDP_Portal {
             buttonOptions.UseVisualStyleBackColor = true;
             buttonOptions.Click += buttonMoreOptions_Click;
             // 
-            // buttonCancel
-            // 
-            buttonCancel.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            buttonCancel.Location = new System.Drawing.Point(246, 5);
-            buttonCancel.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            buttonCancel.Name = "buttonCancel";
-            buttonCancel.Size = new System.Drawing.Size(80, 29);
-            buttonCancel.TabIndex = 2;
-            buttonCancel.Text = "Cancel";
-            buttonCancel.UseVisualStyleBackColor = true;
-            buttonCancel.Click += buttonCancel_Click;
-            // 
             // buttonSave
             // 
             buttonSave.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            buttonSave.Location = new System.Drawing.Point(246, 5);
+            buttonSave.Location = new System.Drawing.Point(158, 5);
             buttonSave.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             buttonSave.Name = "buttonSave";
             buttonSave.Size = new System.Drawing.Size(80, 29);
@@ -447,18 +445,6 @@ namespace RDP_Portal {
             buttonSave.Text = "Save";
             buttonSave.UseVisualStyleBackColor = true;
             buttonSave.Click += buttonSave_Click;
-            // 
-            // buttonEdit
-            // 
-            buttonEdit.Anchor = System.Windows.Forms.AnchorStyles.Right;
-            buttonEdit.Location = new System.Drawing.Point(246, 5);
-            buttonEdit.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            buttonEdit.Name = "buttonEdit";
-            buttonEdit.Size = new System.Drawing.Size(80, 29);
-            buttonEdit.TabIndex = 4;
-            buttonEdit.Text = "Edit";
-            buttonEdit.UseVisualStyleBackColor = true;
-            buttonEdit.Click += buttonEdit_Click;
             // 
             // panelBottom
             // 
@@ -582,7 +568,6 @@ namespace RDP_Portal {
         private System.Windows.Forms.Button buttonOptions;
         private System.Windows.Forms.Button buttonCancel;
         private System.Windows.Forms.Button buttonSave;
-        private System.Windows.Forms.Button buttonEdit;
         private System.Windows.Forms.Panel panelBottom;
         private System.Windows.Forms.Button buttonImport;
         private System.Windows.Forms.Button buttonExport;

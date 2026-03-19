@@ -194,7 +194,7 @@ namespace RDP_Portal
             get => _editMode;
             set
             {
-                buttonEdit.Visible = !value;
+                //buttonEdit.Visible = !value;
                 buttonSave.Visible = value;
                 buttonCancel.Visible = value;
                 buttonOptions.Enabled = !value;
