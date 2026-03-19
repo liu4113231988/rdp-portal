@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace RDP_Portal
 {
@@ -28,6 +29,16 @@ namespace RDP_Portal
             {
                 _instance = new Config();
                 _instance.Load();
+            }
+            return _instance;
+        }
+
+        public static async Task<Config> GetConfigAsync()
+        {
+            if (_instance == null)
+            {
+                _instance = new Config();
+                await Task.Run(() => _instance.Load());
             }
             return _instance;
         }

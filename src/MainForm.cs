@@ -25,7 +25,6 @@ namespace RDP_Portal
             try
             {
                 InitializeComponent();
-                _config = Config.GetConfig();
                 Logger.Info("MainForm initialized");
             }
             catch (Exception ex)
@@ -36,8 +35,9 @@ namespace RDP_Portal
         }
 
         [SupportedOSPlatform("windows")]
-        private void MainForm_Load(object sender, EventArgs e)
+        private async void MainForm_Load(object sender, EventArgs e)
         {
+            _config = await Config.GetConfigAsync();
             // Populate group combo box with existing groups
             UpdateGroupList();
 
@@ -677,7 +677,24 @@ namespace RDP_Portal
                     if (ofd.ShowDialog(this) == DialogResult.OK)
                     {
                         var json = System.IO.File.ReadAllText(ofd.FileName);
-                        var list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Profile>>(json);
+                        List<Profile> list = null;
+                        try
+                        {
+                            list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Profile>>(json);
+                        }
+                        catch
+                        {
+                            try
+                            {
+                                var jo = Newtonsoft.Json.Linq.JObject.Parse(json);
+                                if (jo["Profiles"] != null)
+                                {
+                                    list = jo["Profiles"].ToObject<List<Profile>>();
+                                }
+                            }
+                            catch { }
+                        }
+
                         if (list == null)
                         {
                             MessageBox.Show("No profiles found in file.");
