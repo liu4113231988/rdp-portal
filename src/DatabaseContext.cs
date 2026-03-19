@@ -82,7 +82,7 @@ namespace RDP_Portal
                         Username TEXT NOT NULL DEFAULT '',
                         EncryptedPassword TEXT NOT NULL DEFAULT '',
                         Domain TEXT NOT NULL DEFAULT '',
-                        ProfileGroup TEXT NOT NULL DEFAULT '',
+                        GroupName TEXT NOT NULL DEFAULT '',
                         DesktopWidth INTEGER NOT NULL DEFAULT 1280,
                         DesktopHeight INTEGER NOT NULL DEFAULT 720,
                         ScreenMode INTEGER NOT NULL DEFAULT 1,

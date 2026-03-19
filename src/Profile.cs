@@ -61,7 +61,7 @@ namespace RDP_Portal
         public string Domain { get; set; } = "";
 
         // Optional grouping and tagging for profiles
-        public string Group { get; set; } = "";
+        public string GroupName { get; set; } = "";
 
         // Advanced settings
         public int DesktopWidth { get; set; } = 1280;

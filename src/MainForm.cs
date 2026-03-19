@@ -96,10 +96,11 @@ namespace RDP_Portal
                 {
                     groupName = treeViewProfiles.SelectedNode.Text;
                 }
-                var p = new Profile() { JustAdded = true, Group = groupName };
+                var p = new Profile() { JustAdded = true, GroupName = groupName };
                 _config.Profiles.Add(p);
-                _config.Save();
                 PopulateTree(selectProfile: p);
+                SelectProfile(true);
+                EditMode = true;
             });
             cms.Items.Add(new ToolStripSeparator());
             cms.Items.Add("Edit", null, (s, ev) =>
@@ -124,9 +125,9 @@ namespace RDP_Portal
 
                         foreach (var p in _config.Profiles)
                         {
-                            if (!String.IsNullOrWhiteSpace(p.Group) && p.Group == oldName)
+                            if (!String.IsNullOrWhiteSpace(p.GroupName) && p.GroupName == oldName)
                             {
-                                p.Group = newName;
+                                p.GroupName = newName;
                                 _config.Save();
                             }
                         }
@@ -157,7 +158,7 @@ namespace RDP_Portal
                     var ok = MessageBox.Show("Delete group '" + grp + "' and all its profiles?", "Delete Group", MessageBoxButtons.YesNo);
                     if (ok == DialogResult.Yes)
                     {
-                        var items = _config.Profiles.Where(x => (x.Group ?? "") == grp).ToList();
+                        var items = _config.Profiles.Where(x => (x.GroupName ?? "") == grp).ToList();
                         foreach (var ip in items)
                         {
                             ip.Delete();
@@ -194,7 +195,6 @@ namespace RDP_Portal
             get => _editMode;
             set
             {
-                //buttonEdit.Visible = !value;
                 buttonSave.Visible = value;
                 buttonCancel.Visible = value;
                 buttonOptions.Enabled = !value;
@@ -224,11 +224,28 @@ namespace RDP_Portal
         {
             var profile = new Profile();
             profile.JustAdded = true;
-            profile.Group = "";
+
+            string groupName = "";
+            if (treeViewProfiles.SelectedNode != null)
+            {
+                var sel = treeViewProfiles.SelectedNode;
+                if (sel.Tag is Profile)
+                {
+                    groupName = sel.Parent?.Text ?? "";
+                }
+                else
+                {
+                    groupName = sel.Text;
+                }
+            }
+
+            profile.GroupName = groupName;
             profile.EncryptedPassword = "";
+
             _config.Profiles.Add(profile);
-            _config.Save();
             PopulateTree(selectProfile: profile);
+            SelectProfile(true);
+            EditMode = true;
         }
 
         private void buttonMoreOptions_Click(object sender, EventArgs e)
@@ -244,7 +261,10 @@ namespace RDP_Portal
             try
             {
                 var exeProcess = Process.Start(startInfo) ?? throw new InvalidOperationException();
-                exeProcess.WaitForExit();
+                Task.Run(() =>
+                {
+                    try { exeProcess.WaitForExit(); } catch { }
+                });
             }
             catch (Exception ex)
             {
@@ -279,12 +299,18 @@ namespace RDP_Portal
             {
                 Logger.Info($"Connecting to {profile.Computer} with profile {profile.Name}");
                 var exeProcess = Process.Start(startInfo) ?? throw new InvalidOperationException();
-                exeProcess.WaitForExit();
-
-                if (!_config.KeepOpening)
+                Task.Run(() =>
                 {
-                    this.Close();
-                }
+                    try
+                    {
+                        exeProcess.WaitForExit();
+                        if (!_config.KeepOpening)
+                        {
+                            try { this.BeginInvoke((Action)(() => this.Close())); } catch { }
+                        }
+                    }
+                    catch { }
+                });
 
             }
             catch (Exception ex)
@@ -300,6 +326,11 @@ namespace RDP_Portal
             if (e.Node?.Tag is Profile)
             {
                 SelectProfile();
+            }
+            else
+            {
+                buttonConnect.Visible = false;
+                buttonOptions.Visible = false;
             }
         }
 
@@ -324,6 +355,8 @@ namespace RDP_Portal
             {
                 return;
             }
+            buttonConnect.Visible = true;
+            buttonOptions.Visible = true;
 
             selectedProfile = profile;
 
@@ -444,8 +477,17 @@ namespace RDP_Portal
 
                 SaveAdvancedSettings(profile);
 
-                profile.PrepareRdpFile();
+                // Try to prepare RDP file but do not let file I/O failures prevent DB save
+                try
+                {
+                    profile.PrepareRdpFile();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error($"PrepareRdpFile failed for profile: {profile.Name}", ex);
+                }
 
+                // Persist to database
                 _config.Save();
                 EditMode = false;
 
@@ -562,7 +604,7 @@ namespace RDP_Portal
             {
                 var groupNode = new TreeNode(group.GroupName);
 
-                var profilesInGroup = _config.Profiles.Where(p => (string.IsNullOrWhiteSpace(p.Group) ? "Ungrouped" : p.Group) == group.GroupName);
+                var profilesInGroup = _config.Profiles.Where(p => (string.IsNullOrWhiteSpace(p.GroupName) ? "Ungrouped" : p.GroupName) == group.GroupName);
                 foreach (var profile in profilesInGroup)
                 {
                     var node = new TreeNode(profile.Name);

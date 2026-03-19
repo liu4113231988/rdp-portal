@@ -39,12 +39,12 @@ namespace RDP_Portal
                 using var connection = _context.GetConnection();
                 var sql = @"
                     INSERT INTO Profiles (
-                        Name, Filename, Computer, Username, EncryptedPassword, Domain, ProfileGroup,
+                        Name, Filename, Computer, Username, EncryptedPassword, Domain, GroupName,
                         DesktopWidth, DesktopHeight, ScreenMode, UseMultiMon, ColorDepth, AudioMode,
                         RedirectPrinters, RedirectClipboard, RedirectDrives, RedirectPorts,
                         RedirectSmartCards, PromptForCredentials, AuthenticationLevel, EnableCredSSPSupport
                     ) VALUES (
-                        @Name, @Filename, @Computer, @Username, @EncryptedPassword, @Domain, @Group,
+                        @Name, @Filename, @Computer, @Username, @EncryptedPassword, @Domain, @GroupName,
                         @DesktopWidth, @DesktopHeight, @ScreenMode, @UseMultiMon, @ColorDepth, @AudioMode,
                         @RedirectPrinters, @RedirectClipboard, @RedirectDrives, @RedirectPorts,
                         @RedirectSmartCards, @PromptForCredentials, @AuthenticationLevel, @EnableCredSSPSupport
@@ -74,7 +74,7 @@ namespace RDP_Portal
                         Username = @Username,
                         EncryptedPassword = @EncryptedPassword,
                         Domain = @Domain,
-                        ProfileGroup = @Group,
+                        GroupName = @GroupName,
                         DesktopWidth = @DesktopWidth,
                         DesktopHeight = @DesktopHeight,
                         ScreenMode = @ScreenMode,
