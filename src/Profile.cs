@@ -27,8 +27,8 @@ namespace RDP_Portal
         }
 
         public string Filename { get; set; } = "";
-        public string Computer { get; set; }
-        public string Username { get; set; }
+        public string Computer { get; set; } = "";
+        public string Username { get; set; } = "";
 
         /**
          * Encrypted Password used by mstsc.exe
@@ -58,7 +58,7 @@ namespace RDP_Portal
             set => EncryptedPassword = value.Encrypt();
         }
 
-        public string Domain { get; set; }
+        public string Domain { get; set; } = "";
 
         // Optional grouping and tagging for profiles
         public string Group { get; set; } = "";

@@ -81,7 +81,7 @@ namespace RDP_Portal
                         _config.SaveGroups();
                         _config.Groups = new ProfileRepository(new DatabaseContext()).GetAllGroups();
                         PopulateTree();
-                        MessageBox.Show("Group '" + name + "' created.");
+                        //MessageBox.Show("Group '" + name + "' created.");
                     }
                     else
                     {
