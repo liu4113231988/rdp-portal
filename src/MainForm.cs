@@ -67,9 +67,10 @@ namespace RDP_Portal
             // Default to edit mode so fields are editable without pressing Edit
             EditMode = false;
 
-            // create context menu for tree
+            // create context menu for tree (dynamic visibility based on selected node)
             var cms = new ContextMenuStrip();
-            cms.Items.Add("New Group", null, (s, ev) =>
+
+            var newGroupItem = new ToolStripMenuItem("New Group", null, (s, ev) =>
             {
                 var name = Prompt.ShowDialog("Group name:", "New Group");
                 if (!String.IsNullOrWhiteSpace(name))
@@ -88,7 +89,8 @@ namespace RDP_Portal
                     }
                 }
             });
-            cms.Items.Add("New Profile", null, (s, ev) =>
+
+            var newProfileItem = new ToolStripMenuItem("New Profile", null, (s, ev) =>
             {
                 var groupName = "";
                 if (treeViewProfiles.SelectedNode != null && !(treeViewProfiles.SelectedNode.Tag is Profile))
@@ -101,8 +103,10 @@ namespace RDP_Portal
                 SelectProfile(true);
                 EditMode = true;
             });
-            cms.Items.Add(new ToolStripSeparator());
-            cms.Items.Add("Edit", null, (s, ev) =>
+
+            var sep = new ToolStripSeparator();
+
+            var editItem = new ToolStripMenuItem("Edit", null, (s, ev) =>
             {
                 if (treeViewProfiles.SelectedNode == null) return;
                 if (treeViewProfiles.SelectedNode.Tag is Profile)
@@ -138,7 +142,8 @@ namespace RDP_Portal
                     }
                 }
             });
-            cms.Items.Add("Delete", null, (s, ev) =>
+
+            var deleteItem = new ToolStripMenuItem("Delete", null, (s, ev) =>
             {
                 if (treeViewProfiles.SelectedNode == null) return;
                 if (treeViewProfiles.SelectedNode.Tag is Profile p)
@@ -178,13 +183,60 @@ namespace RDP_Portal
                     }
                 }
             });
-            cms.Items.Add("Connect", null, (s, ev) =>
+
+            var connectItem = new ToolStripMenuItem("Connect", null, (s, ev) =>
             {
                 if (treeViewProfiles.SelectedNode != null && treeViewProfiles.SelectedNode.Tag is Profile)
                 {
                     buttonConnect_Click(s, EventArgs.Empty);
                 }
             });
+
+            cms.Items.AddRange(new ToolStripItem[] { newGroupItem, newProfileItem, sep, editItem, deleteItem, connectItem });
+
+            // Show/hide menu items based on what node is selected when the menu opens
+            cms.Opening += (s, ev) =>
+            {
+                var sel = treeViewProfiles.SelectedNode;
+                bool isProfile = sel?.Tag is Profile;
+
+                if (sel == null)
+                {
+                    // blank area: allow creating groups and profiles
+                    newGroupItem.Visible = true;
+                    newProfileItem.Visible = true;
+                    editItem.Visible = false;
+                    deleteItem.Visible = false;
+                    connectItem.Visible = false;
+                }
+                else if (isProfile)
+                {
+                    // profile node: only Edit, Delete, Connect
+                    newGroupItem.Visible = false;
+                    newProfileItem.Visible = false;
+                    editItem.Visible = true;
+                    deleteItem.Visible = true;
+                    connectItem.Visible = true;
+                }
+                else
+                {
+                    // group node: do not allow adding subgroup (single-level groups)
+                    newGroupItem.Visible = false;
+                    newProfileItem.Visible = true;
+                    editItem.Visible = true;
+                    deleteItem.Visible = true;
+                    connectItem.Visible = false;
+                }
+            };
+
+            // Ensure right-click selects the node so the Opening logic sees the correct node
+            treeViewProfiles.NodeMouseClick += (s, ev) =>
+            {
+                if (ev.Button == MouseButtons.Right)
+                {
+                    treeViewProfiles.SelectedNode = ev.Node;
+                }
+            };
 
             treeViewProfiles.ContextMenuStrip = cms;
         }
@@ -324,6 +376,8 @@ namespace RDP_Portal
             // if profile node selected, show its details
             if (e.Node?.Tag is Profile)
             {
+                buttonConnect.Visible = true;
+                buttonOptions.Visible = true;
                 SelectProfile();
             }
             else
@@ -346,6 +400,8 @@ namespace RDP_Portal
         {
             if (treeViewProfiles.SelectedNode == null || !(treeViewProfiles.SelectedNode.Tag is Profile profile))
             {
+                buttonConnect.Visible = false;
+                buttonOptions.Visible = false;
                 return;
             }
 
