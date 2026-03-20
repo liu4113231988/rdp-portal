@@ -231,7 +231,6 @@ namespace RDP_Portal
                 if (File.Exists(Filename))
                 {
                     File.Delete(Filename);
-                    Logger.Info($"Deleted RDP file: {Filename}");
                 }
             }
             catch (Exception ex)

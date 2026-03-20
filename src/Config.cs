@@ -84,7 +84,6 @@ namespace RDP_Portal
 
                 LoadSettings();
 
-                Logger.Info($"Loaded {Profiles.Count} profiles and {Groups.Count} groups");
             }
             catch (Exception ex)
             {

@@ -30,7 +30,7 @@ namespace RDP_Portal
             catch (Exception ex)
             {
                 Logger.Error("Failed to initialize MainForm", ex);
-                throw;
+                MessageBox.Show("LOAD ERROR!");
             }
         }
 
@@ -81,7 +81,6 @@ namespace RDP_Portal
                         _config.SaveGroups();
                         _config.Groups = new ProfileRepository(new DatabaseContext()).GetAllGroups();
                         PopulateTree();
-                        //MessageBox.Show("Group '" + name + "' created.");
                     }
                     else
                     {
@@ -554,7 +553,7 @@ namespace RDP_Portal
         private void checkBoxKeepOpening_CheckedChanged(object sender, EventArgs e)
         {
             _config.KeepOpening = checkBoxKeepOpening.Checked;
-            _config.Save();
+            //_config.Save();
         }
 
         private void buttonAbout_Click(object sender, EventArgs e)
@@ -581,14 +580,7 @@ namespace RDP_Portal
             treeViewProfiles.BeginUpdate();
             treeViewProfiles.Nodes.Clear();
 
-            // Build group set from profiles and persisted groups so empty groups show up
             var groupSet = new HashSet<Group>();
-
-            //foreach (var p in _config.Profiles)
-            //{
-            //    var gname = String.IsNullOrWhiteSpace(p.Group) ? "Ungrouped" : p.Group;
-            //    groupSet.Add(new Group() { GroupName = gname });
-            //}
 
             if (_config.Groups != null)
             {
@@ -617,6 +609,7 @@ namespace RDP_Portal
             }
 
             treeViewProfiles.EndUpdate();
+            treeViewProfiles.ExpandAll();
 
             // restore or select node
             if (selectProfile != null)
