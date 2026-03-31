@@ -230,16 +230,16 @@ namespace RDP_Portal
 
                 if (sel == null)
                 {
-                    // blank area: allow creating groups and profiles
+                    // blank area: only allow creating groups
                     newGroupItem.Visible = true;
-                    newProfileItem.Visible = true;
+                    newProfileItem.Visible = false;
                     editItem.Visible = false;
                     deleteItem.Visible = false;
                     connectItem.Visible = false;
                 }
                 else if (isProfile)
                 {
-                    // profile node: only Edit, Delete, Connect
+                    // profile node: Edit, Delete, Connect
                     newGroupItem.Visible = false;
                     newProfileItem.Visible = false;
                     editItem.Visible = true;
@@ -248,8 +248,8 @@ namespace RDP_Portal
                 }
                 else
                 {
-                    // group node: do not allow adding subgroup (single-level groups)
-                    newGroupItem.Visible = false;
+                    // group node: New Group, New Profile, Edit, Delete
+                    newGroupItem.Visible = true;
                     newProfileItem.Visible = true;
                     editItem.Visible = true;
                     deleteItem.Visible = true;
@@ -663,6 +663,15 @@ namespace RDP_Portal
                 {
                     treeViewProfiles.SelectedNode = null;
                 }
+            }
+        }
+
+        private void treeViewProfiles_MouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            var hitTest = treeViewProfiles.HitTest(e.Location);
+            if (hitTest.Node == null)
+            {
+                BeginInvoke(new Action(() => treeViewProfiles.SelectedNode = null));
             }
         }
 
