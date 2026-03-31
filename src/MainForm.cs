@@ -15,16 +15,16 @@ namespace RDP_Portal
     public partial class MainForm : Form
     {
 
-        private Config _config;
+        private Config? _config;
         private bool _editMode = false;
-        private Profile selectedProfile = null;
-        private TreeNode lastSelectedNode = null;
+        private Profile? selectedProfile = null;
 
         public MainForm()
         {
             try
             {
                 InitializeComponent();
+                _config = null!;
                 Logger.Info("MainForm initialized");
             }
             catch (Exception ex)
@@ -197,7 +197,7 @@ namespace RDP_Portal
                             _config.DeleteProfile(ip);
                         }
 
-                        if (_config.Groups != null)
+            if (_config?.Groups != null)
                         {
                             var group = _config.Groups.Where(t => t.GroupName == grp).FirstOrDefault();
                             if (group != null)
@@ -216,7 +216,7 @@ namespace RDP_Portal
             {
                 if (treeViewProfiles.SelectedNode != null && treeViewProfiles.SelectedNode.Tag is Profile)
                 {
-                    buttonConnect_Click(s, EventArgs.Empty);
+                    buttonConnect_Click(s ?? this, EventArgs.Empty);
                 }
             });
 
@@ -321,7 +321,7 @@ namespace RDP_Portal
             profile.GroupName = groupName;
             profile.EncryptedPassword = "";
 
-            _config.Profiles.Add(profile);
+            _config!.Profiles.Add(profile);
             PopulateTree(selectProfile: profile);
             SelectProfile(true);
             EditMode = true;
@@ -383,7 +383,7 @@ namespace RDP_Portal
                     try
                     {
                         exeProcess.WaitForExit();
-                        if (!_config.KeepOpening)
+                        if (!_config!.KeepOpening)
                         {
                             try { this.BeginInvoke((Action)(() => this.Close())); } catch { }
                         }
@@ -501,9 +501,9 @@ namespace RDP_Portal
 
             var profile = GetSelectedProfile();
 
-            if (profile.JustAdded && _config.Profiles.Count > 1)
+            if (profile.JustAdded && _config!.Profiles.Count > 1)
             {
-                buttonDelete_Click(null, null);
+                buttonDelete_Click(this, EventArgs.Empty);
             }
             else
             {
@@ -528,7 +528,7 @@ namespace RDP_Portal
                 if (treeViewProfiles.SelectedNode != null && treeViewProfiles.SelectedNode.Tag is Profile toDelete)
                 {
                     toDelete.Delete();
-                    _config.DeleteProfile(toDelete);
+                    _config!.DeleteProfile(toDelete);
                     PopulateTree();
 
                     if (_config.Profiles.Count == 0)
@@ -571,7 +571,7 @@ namespace RDP_Portal
                 }
 
                 // Persist to database
-                _config.Save();
+                _config!.Save();
                 EditMode = false;
 
                 Logger.Info($"Saved profile: {profile.Name}");
@@ -591,7 +591,7 @@ namespace RDP_Portal
             // Resolution
             if (comboBoxResolution.SelectedIndex >= 0)
             {
-                string resolution = comboBoxResolution.SelectedItem.ToString();
+                string resolution = comboBoxResolution.SelectedItem?.ToString() ?? "";
                 var parts = resolution.Split('x');
                 if (parts.Length == 2)
                 {
@@ -636,7 +636,7 @@ namespace RDP_Portal
 
         private void checkBoxKeepOpening_CheckedChanged(object sender, EventArgs e)
         {
-            _config.KeepOpening = checkBoxKeepOpening.Checked;
+            _config!.KeepOpening = checkBoxKeepOpening.Checked;
             //_config.Save();
         }
 
@@ -680,16 +680,18 @@ namespace RDP_Portal
             // Groups are managed by the tree view; no UI combo to update.
         }
 
-        private void PopulateTree(Profile selectProfile = null)
+        private void PopulateTree(Profile? selectProfile = null)
         {
             treeViewProfiles.BeginUpdate();
             treeViewProfiles.Nodes.Clear();
 
+            var config = _config ?? throw new InvalidOperationException("Config not loaded");
+
             var groupSet = new HashSet<Group>();
 
-            if (_config.Groups != null)
+            if (config.Groups != null)
             {
-                foreach (var g in _config.Groups.Where(x => !String.IsNullOrWhiteSpace(x.GroupName)))
+                foreach (var g in config.Groups.Where(x => !String.IsNullOrWhiteSpace(x.GroupName)))
                 {
                     groupSet.Add(g);
                 }
@@ -701,7 +703,7 @@ namespace RDP_Portal
             {
                 var groupNode = new TreeNode(group.GroupName);
 
-                var profilesInGroup = _config.Profiles.Where(p => (string.IsNullOrWhiteSpace(p.GroupName) ? "Ungrouped" : p.GroupName) == group.GroupName);
+                var profilesInGroup = config.Profiles.Where(p => (string.IsNullOrWhiteSpace(p.GroupName) ? "Ungrouped" : p.GroupName) == group.GroupName);
                 foreach (var profile in profilesInGroup)
                 {
                     var node = new TreeNode(profile.Name);
@@ -746,7 +748,7 @@ namespace RDP_Portal
                     if (sfd.ShowDialog(this) == DialogResult.OK)
                     {
                         var list = new List<Profile>();
-                        foreach (Profile p in _config.Profiles)
+                        foreach (Profile p in _config!.Profiles)
                         {
                             list.Add(p);
                         }
@@ -775,7 +777,7 @@ namespace RDP_Portal
                     if (ofd.ShowDialog(this) == DialogResult.OK)
                     {
                         var json = System.IO.File.ReadAllText(ofd.FileName);
-                        List<Profile> list = null;
+                        List<Profile>? list = null;
                         try
                         {
                             list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Profile>>(json);
@@ -787,7 +789,7 @@ namespace RDP_Portal
                                 var jo = Newtonsoft.Json.Linq.JObject.Parse(json);
                                 if (jo["Profiles"] != null)
                                 {
-                                    list = jo["Profiles"].ToObject<List<Profile>>();
+                                    list = jo["Profiles"]?.ToObject<List<Profile>>();
                                 }
                             }
                             catch { }
@@ -803,7 +805,7 @@ namespace RDP_Portal
                         {
                             profile.Id = 0;
                         }
-                        _config.ImportProfiles(list);
+                        _config!.ImportProfiles(list);
 
                         UpdateGroupList();
                         PopulateTree();
@@ -827,7 +829,7 @@ namespace RDP_Portal
 
 internal static class Prompt
 {
-    public static string ShowDialog(string text, string caption, string defaultValue = "")
+    public static string? ShowDialog(string text, string caption, string defaultValue = "")
     {
         var prompt = new Form()
         {

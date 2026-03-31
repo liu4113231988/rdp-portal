@@ -9,14 +9,14 @@ namespace RDP_Portal {
         }
 
         private void About_Load(object sender, EventArgs e) {
+            if (Owner == null) return;
 
             Location = new Point(Owner.Location.X + Owner.Width / 2 - ClientSize.Width / 2,
                 Owner.Location.Y + Owner.Height / 2 - ClientSize.Height / 2);
 
-            // https://stackoverflow.com/questions/909555/how-can-i-get-the-assembly-file-version
             System.Reflection.Assembly assembly = System.Reflection.Assembly.GetExecutingAssembly();
             System.Diagnostics.FileVersionInfo fvi = System.Diagnostics.FileVersionInfo.GetVersionInfo(assembly.Location);
-            string version = fvi.FileVersion;
+            string version = fvi.FileVersion ?? "1.0.0.0";
 
             labelName.Text = "RDP Portal v" + version;
         }

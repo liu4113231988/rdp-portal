@@ -1,4 +1,4 @@
-﻿﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -194,7 +194,7 @@ namespace RDP_Portal
                 var xBuffer = 10;
                 var yBuffer = 25;
 
-                Rectangle resolution = Screen.PrimaryScreen.Bounds;
+                Rectangle resolution = Screen.PrimaryScreen?.Bounds ?? new Rectangle(0, 0, 1920, 1080);
                 var left = resolution.Size.Width / 2 - DesktopWidth / 2 - xBuffer;
                 var top = resolution.Size.Height / 2 - DesktopHeight / 2 - yBuffer;
                 var right = resolution.Size.Width / 2 + DesktopWidth / 2 + xBuffer;
