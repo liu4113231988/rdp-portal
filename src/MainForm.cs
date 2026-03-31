@@ -71,35 +71,63 @@ namespace RDP_Portal
             var cms = new ContextMenuStrip();
             cms.Items.Add("New Group", null, (s, ev) =>
             {
-                var name = Prompt.ShowDialog("Group name:", "New Group");
-                if (!String.IsNullOrWhiteSpace(name))
+                try
                 {
-                    if (_config.Groups == null) _config.Groups = new List<Group>();
-                    if (!_config.Groups.Where(t => t.GroupName.Equals(name)).Any())
+                    if (_config == null)
                     {
-                        _config.Groups.Add(new Group() { GroupName = name });
-                        _config.SaveGroups();
-                        _config.Groups = new ProfileRepository(new DatabaseContext()).GetAllGroups();
-                        PopulateTree();
+                        MessageBox.Show("Configuration not loaded yet.");
+                        return;
                     }
-                    else
+
+                    var name = Prompt.ShowDialog("Group name:", "New Group");
+                    if (!String.IsNullOrWhiteSpace(name))
                     {
-                        MessageBox.Show("Group '" + name + "' already exists.");
+                        if (_config.Groups == null) _config.Groups = new List<Group>();
+                        if (!_config.Groups.Any(t => t.GroupName.Equals(name, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            _config.Groups.Add(new Group() { GroupName = name });
+                            _config.SaveGroups();
+                            _config.Groups = new ProfileRepository(new DatabaseContext()).GetAllGroups();
+                            PopulateTree();
+                        }
+                        else
+                        {
+                            MessageBox.Show("Group '" + name + "' already exists.");
+                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Failed to create new group", ex);
+                    MessageBox.Show("Failed to create group: " + ex.Message);
                 }
             });
             cms.Items.Add("New Profile", null, (s, ev) =>
             {
-                var groupName = "";
-                if (treeViewProfiles.SelectedNode != null && !(treeViewProfiles.SelectedNode.Tag is Profile))
+                try
                 {
-                    groupName = treeViewProfiles.SelectedNode.Text;
+                    if (_config == null)
+                    {
+                        MessageBox.Show("Configuration not loaded yet.");
+                        return;
+                    }
+
+                    var groupName = "";
+                    if (treeViewProfiles.SelectedNode != null && !(treeViewProfiles.SelectedNode.Tag is Profile))
+                    {
+                        groupName = treeViewProfiles.SelectedNode.Text;
+                    }
+                    var p = new Profile() { JustAdded = true, GroupName = groupName };
+                    _config.Profiles.Add(p);
+                    PopulateTree(selectProfile: p);
+                    SelectProfile(true);
+                    EditMode = true;
                 }
-                var p = new Profile() { JustAdded = true, GroupName = groupName };
-                _config.Profiles.Add(p);
-                PopulateTree(selectProfile: p);
-                SelectProfile(true);
-                EditMode = true;
+                catch (Exception ex)
+                {
+                    Logger.Error("Failed to create new profile", ex);
+                    MessageBox.Show("Failed to create profile: " + ex.Message);
+                }
             });
             cms.Items.Add(new ToolStripSeparator());
             cms.Items.Add("Edit", null, (s, ev) =>
@@ -567,6 +595,18 @@ namespace RDP_Portal
             if (e.Node != null && e.Node.Tag is Profile)
             {
                 buttonConnect_Click(sender, EventArgs.Empty);
+            }
+        }
+
+        private void treeViewProfiles_MouseClick(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                var hitTest = treeViewProfiles.HitTest(e.Location);
+                if (hitTest.Node == null)
+                {
+                    treeViewProfiles.SelectedNode = null;
+                }
             }
         }
 

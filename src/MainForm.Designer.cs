@@ -80,6 +80,7 @@ namespace RDP_Portal {
             treeViewProfiles.TabIndex = 1;
             treeViewProfiles.AfterSelect += treeViewProfiles_AfterSelect;
             treeViewProfiles.NodeMouseDoubleClick += treeViewProfiles_NodeMouseDoubleClick;
+            treeViewProfiles.MouseClick += treeViewProfiles_MouseClick;
             // 
             // textBoxName
             // 

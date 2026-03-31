@@ -5,13 +5,12 @@
     <UseWindowsForms>true</UseWindowsForms>
     <RootNamespace>RDP_Portal</RootNamespace>
     <AssemblyName>RDP-Portal</AssemblyName>
-	  <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Resources\icon.ico</ApplicationIcon>
     <Nullable>enable</Nullable>
     <LangVersion>12</LangVersion>
     <SignAssembly>true</SignAssembly>
-    <!-- <AssemblyOriginatorKeyFile>..\visual-studio-sign-key.snk</AssemblyOriginatorKeyFile> -->
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>
 
