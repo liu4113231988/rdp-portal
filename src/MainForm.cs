@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Text;
@@ -34,10 +35,97 @@ namespace RDP_Portal
             }
         }
 
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (keyData == (Keys.Control | Keys.N))
+            {
+                AddNewProfile();
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.S))
+            {
+                if (EditMode && treeViewProfiles.SelectedNode?.Tag is Profile)
+                {
+                    buttonSave_Click(this, EventArgs.Empty);
+                }
+                return true;
+            }
+            if (keyData == Keys.F5)
+            {
+                if (treeViewProfiles.SelectedNode?.Tag is Profile)
+                {
+                    buttonConnect_Click(this, EventArgs.Empty);
+                }
+                return true;
+            }
+            if (keyData == Keys.Delete)
+            {
+                if (treeViewProfiles.SelectedNode != null && !EditMode)
+                {
+                    buttonDelete_Click(this, EventArgs.Empty);
+                }
+                return true;
+            }
+            if (keyData == (Keys.Control | Keys.D))
+            {
+                if (treeViewProfiles.SelectedNode?.Tag is Profile)
+                {
+                    var cloneItem = new ToolStripMenuItem();
+                    CloneProfile((Profile)treeViewProfiles.SelectedNode.Tag);
+                }
+                return true;
+            }
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private void CloneProfile(Profile original)
+        {
+            try
+            {
+                var cloned = new Profile
+                {
+                    Name = original.Name + " (Copy)",
+                    Computer = original.Computer,
+                    Username = original.Username,
+                    Password = original.Password,
+                    Domain = original.Domain,
+                    GroupName = original.GroupName,
+                    DesktopWidth = original.DesktopWidth,
+                    DesktopHeight = original.DesktopHeight,
+                    ScreenMode = original.ScreenMode,
+                    UseMultiMon = original.UseMultiMon,
+                    ColorDepth = original.ColorDepth,
+                    AudioMode = original.AudioMode,
+                    RedirectPrinters = original.RedirectPrinters,
+                    RedirectClipboard = original.RedirectClipboard,
+                    RedirectDrives = original.RedirectDrives,
+                    RedirectPorts = original.RedirectPorts,
+                    RedirectSmartCards = original.RedirectSmartCards,
+                    PromptForCredentials = original.PromptForCredentials,
+                    AuthenticationLevel = original.AuthenticationLevel,
+                    EnableCredSSPSupport = original.EnableCredSSPSupport,
+                    JustAdded = true,
+                    Filename = ""
+                };
+                _config!.Profiles.Add(cloned);
+                PopulateTree(selectProfile: cloned);
+                SelectProfile(true);
+                EditMode = true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to clone profile", ex);
+                MessageBox.Show("Failed to clone profile: " + ex.Message);
+            }
+        }
+
         [SupportedOSPlatform("windows")]
         private async void MainForm_Load(object sender, EventArgs e)
         {
             _config = await Config.GetConfigAsync();
+
+            SetupTreeViewIcons();
+
             // Populate group combo box with existing groups
             UpdateGroupList();
 
@@ -49,6 +137,17 @@ namespace RDP_Portal
             PopulateTree();
 
             checkBoxKeepOpening.Checked = _config.KeepOpening;
+
+            // Restore window position and size
+            if (_config.WindowLeft >= 0 && _config.WindowTop >= 0)
+            {
+                StartPosition = FormStartPosition.Manual;
+                Location = new Point(_config.WindowLeft, _config.WindowTop);
+            }
+            if (_config.WindowWidth > 0 && _config.WindowHeight > 0)
+            {
+                Size = new Size(_config.WindowWidth, _config.WindowHeight);
+            }
 
             // Ensure a profile is selected on startup and make right-side editable by default
             if (treeViewProfiles.SelectedNode == null)
@@ -220,7 +319,85 @@ namespace RDP_Portal
                 }
             });
 
-            cms.Items.AddRange(new ToolStripItem[] { newGroupItem, newProfileItem, sep, editItem, deleteItem, connectItem });
+            var cloneItem = new ToolStripMenuItem("Clone", null, (s, ev) =>
+            {
+                if (treeViewProfiles.SelectedNode == null || !(treeViewProfiles.SelectedNode.Tag is Profile original)) return;
+                try
+                {
+                    var cloned = new Profile
+                    {
+                        Name = original.Name + " (Copy)",
+                        Computer = original.Computer,
+                        Username = original.Username,
+                        Password = original.Password,
+                        Domain = original.Domain,
+                        GroupName = original.GroupName,
+                        DesktopWidth = original.DesktopWidth,
+                        DesktopHeight = original.DesktopHeight,
+                        ScreenMode = original.ScreenMode,
+                        UseMultiMon = original.UseMultiMon,
+                        ColorDepth = original.ColorDepth,
+                        AudioMode = original.AudioMode,
+                        RedirectPrinters = original.RedirectPrinters,
+                        RedirectClipboard = original.RedirectClipboard,
+                        RedirectDrives = original.RedirectDrives,
+                        RedirectPorts = original.RedirectPorts,
+                        RedirectSmartCards = original.RedirectSmartCards,
+                        PromptForCredentials = original.PromptForCredentials,
+                        AuthenticationLevel = original.AuthenticationLevel,
+                        EnableCredSSPSupport = original.EnableCredSSPSupport,
+                        JustAdded = true,
+                        Filename = ""
+                    };
+                    _config!.Profiles.Add(cloned);
+                    PopulateTree(selectProfile: cloned);
+                    SelectProfile(true);
+                    EditMode = true;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Failed to clone profile", ex);
+                    MessageBox.Show("Failed to clone profile: " + ex.Message);
+                }
+            });
+
+            var moveToGroupItem = new ToolStripMenuItem("Move to Group");
+            moveToGroupItem.DropDownOpening += (s, ev) =>
+            {
+                moveToGroupItem.DropDownItems.Clear();
+                if (_config?.Groups == null) return;
+
+                var groups = _config.Groups.OrderBy(g => g.GroupName).ToList();
+                if (groups.Count == 0)
+                {
+                    var noGroupItem = new ToolStripMenuItem("(No groups available)") { Enabled = false };
+                    moveToGroupItem.DropDownItems.Add(noGroupItem);
+                    return;
+                }
+
+                foreach (var group in groups)
+                {
+                    var g = group;
+                    var item = new ToolStripMenuItem(group.GroupName);
+                    if (treeViewProfiles.SelectedNode?.Tag is Profile currentProfile && currentProfile.GroupName == group.GroupName)
+                    {
+                        item.Enabled = false;
+                        item.Checked = true;
+                    }
+                    item.Click += (sender, e) =>
+                    {
+                        if (treeViewProfiles.SelectedNode?.Tag is Profile profile)
+                        {
+                            profile.GroupName = g.GroupName;
+                            _config.Save();
+                            PopulateTree(selectProfile: profile);
+                        }
+                    };
+                    moveToGroupItem.DropDownItems.Add(item);
+                }
+            };
+
+            cms.Items.AddRange(new ToolStripItem[] { newGroupItem, newProfileItem, sep, editItem, deleteItem, cloneItem, moveToGroupItem, connectItem });
 
             // Show/hide menu items based on what node is selected when the menu opens
             cms.Opening += (s, ev) =>
@@ -236,15 +413,19 @@ namespace RDP_Portal
                     editItem.Visible = false;
                     deleteItem.Visible = false;
                     connectItem.Visible = false;
+                    cloneItem.Visible = false;
+                    moveToGroupItem.Visible = false;
                 }
                 else if (isProfile)
                 {
-                    // profile node: Edit, Delete, Connect
+                    // profile node: Edit, Delete, Clone, Move to Group, Connect
                     newGroupItem.Visible = false;
                     newProfileItem.Visible = false;
                     editItem.Visible = true;
                     deleteItem.Visible = true;
                     connectItem.Visible = true;
+                    cloneItem.Visible = true;
+                    moveToGroupItem.Visible = true;
                 }
                 else
                 {
@@ -254,6 +435,8 @@ namespace RDP_Portal
                     editItem.Visible = true;
                     deleteItem.Visible = true;
                     connectItem.Visible = false;
+                    cloneItem.Visible = false;
+                    moveToGroupItem.Visible = false;
                 }
             };
 
@@ -364,6 +547,19 @@ namespace RDP_Portal
                 return;
             }
 
+            if (!PingHost(profile.Computer))
+            {
+                var result = MessageBox.Show(
+                    $"主机 '{profile.Computer}' 无法访问（ping 失败），是否仍然连接？",
+                    "主机不可达",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Warning);
+                if (result != DialogResult.Yes)
+                {
+                    return;
+                }
+            }
+
             profile.PrepareRdpFile();
 
             ProcessStartInfo startInfo = new ProcessStartInfo
@@ -396,6 +592,20 @@ namespace RDP_Portal
             {
                 Logger.Error($"Failed to connect to {profile.Computer}", ex);
                 MessageBox.Show(ex.ToString());
+            }
+        }
+
+        private bool PingHost(string host)
+        {
+            try
+            {
+                using var ping = new System.Net.NetworkInformation.Ping();
+                var reply = ping.Send(host, 2000);
+                return reply.Status == System.Net.NetworkInformation.IPStatus.Success;
+            }
+            catch
+            {
+                return false;
             }
         }
 
@@ -637,7 +847,23 @@ namespace RDP_Portal
         private void checkBoxKeepOpening_CheckedChanged(object sender, EventArgs e)
         {
             _config!.KeepOpening = checkBoxKeepOpening.Checked;
-            //_config.Save();
+            _config.Save();
+        }
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            try
+            {
+                _config!.WindowLeft = Left;
+                _config.WindowTop = Top;
+                _config.WindowWidth = Width;
+                _config.WindowHeight = Height;
+                _config.Save();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Failed to save window state", ex);
+            }
         }
 
         private void buttonAbout_Click(object sender, EventArgs e)
@@ -675,6 +901,85 @@ namespace RDP_Portal
             }
         }
 
+        private void treeViewProfiles_ItemDrag(object sender, ItemDragEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && e.Item is TreeNode node && node.Tag is Profile)
+            {
+                DoDragDrop(node, DragDropEffects.Move);
+            }
+        }
+
+        private void treeViewProfiles_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data?.GetDataPresent(typeof(TreeNode)) == true)
+            {
+                e.Effect = DragDropEffects.Move;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+
+        private void treeViewProfiles_DragDrop(object sender, DragEventArgs e)
+        {
+            if (e.Data?.GetDataPresent(typeof(TreeNode)) == true && e.Data.GetData(typeof(TreeNode)) is TreeNode draggedNode && draggedNode.Tag is Profile profile)
+            {
+                var targetPoint = treeViewProfiles.PointToClient(new Point(e.X, e.Y));
+                var targetNode = treeViewProfiles.GetNodeAt(targetPoint);
+
+                if (targetNode != null && targetNode != draggedNode)
+                {
+                    string targetGroupName;
+                    if (targetNode.Tag is Profile)
+                    {
+                        targetGroupName = targetNode.Parent?.Text ?? "";
+                    }
+                    else
+                    {
+                        targetGroupName = targetNode.Text;
+                    }
+
+                    if (profile.GroupName != targetGroupName)
+                    {
+                        profile.GroupName = targetGroupName;
+                        _config?.Save();
+                        PopulateTree(selectProfile: profile);
+                    }
+                }
+            }
+        }
+
+        private void SetupTreeViewIcons()
+        {
+            imageListTreeView.Images.Clear();
+
+            var folderIcon = new Bitmap(16, 16);
+            using (var g = Graphics.FromImage(folderIcon))
+            {
+                g.Clear(Color.Transparent);
+                using var brush = new SolidBrush(Color.FromArgb(255, 200, 100));
+                g.FillRectangle(brush, 1, 4, 14, 10);
+                g.FillRectangle(brush, 1, 2, 6, 4);
+                using var pen = new Pen(Color.FromArgb(180, 160, 60));
+                g.DrawRectangle(pen, 1, 4, 14, 10);
+            }
+            imageListTreeView.Images.Add(folderIcon);
+
+            var computerIcon = new Bitmap(16, 16);
+            using (var g = Graphics.FromImage(computerIcon))
+            {
+                g.Clear(Color.Transparent);
+                using var brush = new SolidBrush(Color.FromArgb(80, 140, 220));
+                g.FillRectangle(brush, 2, 2, 12, 9);
+                using var pen = new Pen(Color.FromArgb(60, 100, 180));
+                g.DrawRectangle(pen, 2, 2, 12, 9);
+                g.FillRectangle(pen.Brush, 5, 11, 6, 1);
+                g.FillRectangle(pen.Brush, 4, 12, 8, 2);
+            }
+            imageListTreeView.Images.Add(computerIcon);
+        }
+
         private void UpdateGroupList()
         {
             // Groups are managed by the tree view; no UI combo to update.
@@ -701,13 +1006,21 @@ namespace RDP_Portal
 
             foreach (var group in groupNames)
             {
-                var groupNode = new TreeNode(group.GroupName);
+                var groupNode = new TreeNode(group.GroupName)
+                {
+                    ImageIndex = 0,
+                    SelectedImageIndex = 0
+                };
 
                 var profilesInGroup = config.Profiles.Where(p => (string.IsNullOrWhiteSpace(p.GroupName) ? "Ungrouped" : p.GroupName) == group.GroupName);
                 foreach (var profile in profilesInGroup)
                 {
-                    var node = new TreeNode(profile.Name);
-                    node.Tag = profile;
+                    var node = new TreeNode(profile.Name)
+                    {
+                        Tag = profile,
+                        ImageIndex = 1,
+                        SelectedImageIndex = 1
+                    };
                     groupNode.Nodes.Add(node);
                 }
 
@@ -743,20 +1056,19 @@ namespace RDP_Portal
             {
                 using (var sfd = new SaveFileDialog())
                 {
-                    sfd.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
-                    sfd.FileName = "profiles.json";
+                    sfd.Filter = "CSV files (*.csv)|*.csv|JSON files (*.json)|*.json|All files (*.*)|*.*";
+                    sfd.FileName = "profiles.csv";
                     if (sfd.ShowDialog(this) == DialogResult.OK)
                     {
-                        var list = new List<Profile>();
-                        foreach (Profile p in _config!.Profiles)
+                        var ext = Path.GetExtension(sfd.FileName).ToLowerInvariant();
+                        if (ext == ".csv")
                         {
-                            list.Add(p);
+                            ExportCsv(sfd.FileName);
                         }
-
-                        var json = Newtonsoft.Json.JsonConvert.SerializeObject(list, Newtonsoft.Json.Formatting.Indented);
-                        System.IO.File.WriteAllText(sfd.FileName, json);
-                        Logger.Info($"Exported {list.Count} profiles to {sfd.FileName}");
-                        MessageBox.Show("Exported profiles to " + sfd.FileName);
+                        else
+                        {
+                            ExportJson(sfd.FileName);
+                        }
                     }
                 }
             }
@@ -765,6 +1077,41 @@ namespace RDP_Portal
                 Logger.Error("Export failed", ex);
                 MessageBox.Show("Export failed: " + ex.Message);
             }
+        }
+
+        private void ExportCsv(string path)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("Name,Computer,Username,Domain,GroupName,DesktopWidth,DesktopHeight,ScreenMode,ColorDepth,AudioMode,RedirectPrinters,RedirectClipboard,RedirectDrives,RedirectPorts,RedirectSmartCards,PromptForCredentials");
+
+            foreach (Profile p in _config!.Profiles)
+            {
+                sb.AppendLine($"\"{EscapeCsv(p.Name)}\",\"{EscapeCsv(p.Computer)}\",\"{EscapeCsv(p.Username)}\",\"{EscapeCsv(p.Domain)}\",\"{EscapeCsv(p.GroupName)}\",{p.DesktopWidth},{p.DesktopHeight},{p.ScreenMode},{p.ColorDepth},{p.AudioMode},{p.RedirectPrinters},{p.RedirectClipboard},{p.RedirectDrives},{p.RedirectPorts},{p.RedirectSmartCards},{p.PromptForCredentials}");
+            }
+
+            File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
+            Logger.Info($"Exported {_config.Profiles.Count} profiles to CSV: {path}");
+            MessageBox.Show($"Exported {_config.Profiles.Count} profiles to {path}");
+        }
+
+        private void ExportJson(string path)
+        {
+            var list = new List<Profile>();
+            foreach (Profile p in _config!.Profiles)
+            {
+                list.Add(p);
+            }
+
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(list, Newtonsoft.Json.Formatting.Indented);
+            File.WriteAllText(path, json);
+            Logger.Info($"Exported {list.Count} profiles to JSON: {path}");
+            MessageBox.Show($"Exported {list.Count} profiles to {path}");
+        }
+
+        private static string EscapeCsv(string value)
+        {
+            if (value == null) return "";
+            return value.Replace("\"", "\"\"");
         }
 
         private void buttonImport_Click(object sender, EventArgs e)

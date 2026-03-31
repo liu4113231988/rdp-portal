@@ -46,6 +46,10 @@ namespace RDP_Portal
         public BindingList<Profile> Profiles { get; private set; }
         public List<Group> Groups { get; set; }
         public bool KeepOpening { get; set; } = true;
+        public int WindowLeft { get; set; } = -1;
+        public int WindowTop { get; set; } = -1;
+        public int WindowWidth { get; set; } = 628;
+        public int WindowHeight { get; set; } = 658;
 
         public void ImportProfiles(List<Profile> profiles)
         {
@@ -101,6 +105,18 @@ namespace RDP_Portal
                 {
                     KeepOpening = keepOpening;
                 }
+
+                var left = _profileRepo.GetSetting("WindowLeft");
+                if (left != null && int.TryParse(left, out int wl)) WindowLeft = wl;
+
+                var top = _profileRepo.GetSetting("WindowTop");
+                if (top != null && int.TryParse(top, out int wt)) WindowTop = wt;
+
+                var width = _profileRepo.GetSetting("WindowWidth");
+                if (width != null && int.TryParse(width, out int ww)) WindowWidth = ww;
+
+                var height = _profileRepo.GetSetting("WindowHeight");
+                if (height != null && int.TryParse(height, out int wh)) WindowHeight = wh;
             }
             catch (Exception ex)
             {
@@ -127,6 +143,10 @@ namespace RDP_Portal
                 }
 
                 _profileRepo.SetSetting("KeepOpening", KeepOpening.ToString());
+                _profileRepo.SetSetting("WindowLeft", WindowLeft.ToString());
+                _profileRepo.SetSetting("WindowTop", WindowTop.ToString());
+                _profileRepo.SetSetting("WindowWidth", WindowWidth.ToString());
+                _profileRepo.SetSetting("WindowHeight", WindowHeight.ToString());
                 Logger.Info("Configuration saved successfully");
             }
             catch (Exception ex)

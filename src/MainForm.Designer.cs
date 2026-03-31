@@ -70,18 +70,29 @@ namespace RDP_Portal {
             pictureBox1.TabIndex = 0;
             pictureBox1.TabStop = false;
             // 
+            imageListTreeView = new System.Windows.Forms.ImageList();
+            imageListTreeView.ColorDepth = System.Windows.Forms.ColorDepth.Depth32Bit;
+            imageListTreeView.ImageSize = new System.Drawing.Size(16, 16);
+            // 
             // treeViewProfiles
             // 
+            treeViewProfiles.AllowDrop = true;
             treeViewProfiles.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
+            treeViewProfiles.ImageIndex = 0;
+            treeViewProfiles.ImageList = imageListTreeView;
             treeViewProfiles.Location = new System.Drawing.Point(12, 113);
             treeViewProfiles.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
             treeViewProfiles.Name = "treeViewProfiles";
+            treeViewProfiles.SelectedImageIndex = 0;
             treeViewProfiles.Size = new System.Drawing.Size(180, 475);
             treeViewProfiles.TabIndex = 1;
             treeViewProfiles.AfterSelect += treeViewProfiles_AfterSelect;
             treeViewProfiles.NodeMouseDoubleClick += treeViewProfiles_NodeMouseDoubleClick;
             treeViewProfiles.MouseClick += treeViewProfiles_MouseClick;
             treeViewProfiles.MouseDoubleClick += treeViewProfiles_MouseDoubleClick;
+            treeViewProfiles.ItemDrag += treeViewProfiles_ItemDrag;
+            treeViewProfiles.DragEnter += treeViewProfiles_DragEnter;
+            treeViewProfiles.DragDrop += treeViewProfiles_DragDrop;
             // 
             // textBoxName
             // 
@@ -526,6 +537,7 @@ namespace RDP_Portal {
             MinimumSize = new System.Drawing.Size(600, 697);
             Name = "MainForm";
             Text = "RDP Portal";
+            FormClosing += MainForm_FormClosing;
             Load += MainForm_Load;
             ((System.ComponentModel.ISupportInitialize)pictureBox1).EndInit();
             panelSettings.ResumeLayout(false);
@@ -575,6 +587,7 @@ namespace RDP_Portal {
         private System.Windows.Forms.Button buttonExport;
         private System.Windows.Forms.Button buttonAbout;
         private System.Windows.Forms.CheckBox checkBoxKeepOpening;
+        private System.Windows.Forms.ImageList imageListTreeView;
 
         #endregion
     }

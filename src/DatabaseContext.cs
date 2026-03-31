@@ -110,6 +110,14 @@ namespace RDP_Portal
                         Key TEXT PRIMARY KEY,
                         Value TEXT NOT NULL
                     );
+
+                    CREATE TABLE IF NOT EXISTS ConnectionHistory (
+                        Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        ProfileId INTEGER NOT NULL,
+                        ProfileName TEXT NOT NULL,
+                        Computer TEXT NOT NULL,
+                        ConnectedAt TEXT NOT NULL DEFAULT (datetime('now'))
+                    );
                 ";
                 command.ExecuteNonQuery();
             }
