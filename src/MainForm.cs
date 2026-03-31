@@ -258,7 +258,7 @@ namespace RDP_Portal
                             if (!String.IsNullOrWhiteSpace(p.GroupName) && p.GroupName == oldName)
                             {
                                 p.GroupName = newName;
-                                _config.Save();
+                        _config!.Save();
                             }
                         }
 
@@ -1114,6 +1114,92 @@ namespace RDP_Portal
             return value.Replace("\"", "\"\"");
         }
 
+        private void buttonExportGroups_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (var sfd = new SaveFileDialog())
+                {
+                    sfd.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
+                    sfd.FileName = "groups.json";
+                    if (sfd.ShowDialog(this) == DialogResult.OK)
+                    {
+                        var json = Newtonsoft.Json.JsonConvert.SerializeObject(_config!.Groups, Newtonsoft.Json.Formatting.Indented);
+                        File.WriteAllText(sfd.FileName, json);
+                        ShowSuccess("导出完成", $"已导出 {_config.Groups.Count} 个 Group 到 {sfd.FileName}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Export groups failed", ex);
+                ShowError("导出失败", "导出 Group 时发生错误。", ex.Message);
+            }
+        }
+
+        private void buttonImportGroups_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                using (var ofd = new OpenFileDialog())
+                {
+                    ofd.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
+                    if (ofd.ShowDialog(this) == DialogResult.OK)
+                    {
+                        var json = File.ReadAllText(ofd.FileName);
+                        List<Group>? groups = null;
+                        try
+                        {
+                            groups = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Group>>(json);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Error("Failed to parse groups JSON", ex);
+                        }
+
+                        if (groups == null || groups.Count == 0)
+                        {
+                            ShowError("导入失败", "文件中没有找到有效的 Group 数据。", "请检查文件是否为有效的 JSON 格式，且包含 Group 列表。");
+                            return;
+                        }
+
+                        var imported = 0;
+                        var skipped = 0;
+                        foreach (var group in groups)
+                        {
+                            if (string.IsNullOrWhiteSpace(group.GroupName))
+                            {
+                                skipped++;
+                                continue;
+                            }
+                            var existing = _config!.Groups?.FirstOrDefault(g => g.GroupName.Equals(group.GroupName, StringComparison.OrdinalIgnoreCase));
+                            if (existing != null)
+                            {
+                                skipped++;
+                            }
+                            else
+                            {
+                                if (_config.Groups == null) _config.Groups = new List<Group>();
+                                _config.Groups.Add(group);
+                                imported++;
+                            }
+                        }
+
+                        _config!.SaveGroups();
+                        _config.Groups = new ProfileRepository(new DatabaseContext()).GetAllGroups();
+                        PopulateTree();
+
+                        ShowSuccess("导入完成", $"成功导入 {imported} 个 Group" + (skipped > 0 ? $"，跳过 {skipped} 个重复项" : "") + "。");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Import groups failed", ex);
+                ShowError("导入失败", "导入 Group 时发生错误。", ex.Message);
+            }
+        }
+
         private void buttonImport_Click(object sender, EventArgs e)
         {
             try
@@ -1142,31 +1228,204 @@ namespace RDP_Portal
                             catch { }
                         }
 
-                        if (list == null)
+                        if (list == null || list.Count == 0)
                         {
-                            MessageBox.Show("No profiles found in file.");
+                            ShowError("导入失败", "文件中没有找到有效的 Profile 数据。", "请检查文件是否为有效的 JSON 格式，且包含 Profile 列表。");
                             return;
                         }
 
+                        var validation = ValidateProfiles(list);
+                        if (validation.HasIssues)
+                        {
+                            var result = ShowValidationDialog(validation);
+                            if (result != DialogResult.Yes)
+                            {
+                                return;
+                            }
+                        }
+
+                        var imported = 0;
+                        var skipped = 0;
                         foreach (var profile in list)
                         {
                             profile.Id = 0;
+                            if (string.IsNullOrWhiteSpace(profile.Name))
+                            {
+                                skipped++;
+                                continue;
+                            }
+                            var existing = _config!.Profiles.FirstOrDefault(p => p.Name == profile.Name && p.Computer == profile.Computer);
+                            if (existing != null)
+                            {
+                                skipped++;
+                            }
+                            else
+                            {
+                                _config.Profiles.Add(profile);
+                                imported++;
+                            }
                         }
-                        _config!.ImportProfiles(list);
 
+                        _config!.Save();
                         UpdateGroupList();
                         PopulateTree();
 
-                        Logger.Info($"Imported {list.Count} profiles from {ofd.FileName}");
-                        MessageBox.Show("Imported " + list.Count + " profiles.");
+                        Logger.Info($"Imported {imported} profiles from {ofd.FileName}");
+                        ShowSuccess("导入完成", $"成功导入 {imported} 个 Profile" + (skipped > 0 ? $"，跳过 {skipped} 个重复项" : "") + "。");
                     }
                 }
             }
             catch (Exception ex)
             {
                 Logger.Error("Import failed", ex);
-                MessageBox.Show("Import failed: " + ex.Message);
+                ShowError("导入失败", "导入过程中发生错误。", ex.Message);
             }
+        }
+
+        private ProfileValidationResult ValidateProfiles(List<Profile> profiles)
+        {
+            var result = new ProfileValidationResult();
+            var seenNames = new HashSet<string>();
+            var seenComputers = new HashSet<string>();
+
+            foreach (var p in profiles)
+            {
+                if (string.IsNullOrWhiteSpace(p.Name))
+                {
+                    result.Warnings.Add($"第 {profiles.IndexOf(p) + 1} 项: Profile 名称为空");
+                }
+                else if (seenNames.Contains(p.Name))
+                {
+                    result.Warnings.Add($"重复的 Profile 名称: '{p.Name}'");
+                }
+                else
+                {
+                    seenNames.Add(p.Name);
+                }
+
+                if (!string.IsNullOrWhiteSpace(p.Computer))
+                {
+                    if (seenComputers.Contains(p.Computer))
+                    {
+                        result.Warnings.Add($"重复的计算机地址: '{p.Computer}'");
+                    }
+                    else
+                    {
+                        seenComputers.Add(p.Computer);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private DialogResult ShowValidationDialog(ProfileValidationResult validation)
+        {
+            var detailForm = new Form
+            {
+                Width = 500,
+                Height = 400,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = "数据验证警告",
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var label = new Label
+            {
+                Left = 15,
+                Top = 15,
+                Width = 450,
+                Height = 30,
+                Text = $"发现 {validation.Warnings.Count} 个问题，是否继续导入？"
+            };
+
+            var listBox = new ListBox
+            {
+                Left = 15,
+                Top = 50,
+                Width = 450,
+                Height = 240
+            };
+            foreach (var w in validation.Warnings)
+            {
+                listBox.Items.Add("⚠ " + w);
+            }
+
+            var btnContinue = new Button { Text = "继续导入", Left = 240, Width = 100, Top = 300, DialogResult = DialogResult.Yes };
+            var btnCancel = new Button { Text = "取消", Left = 350, Width = 100, Top = 300, DialogResult = DialogResult.No };
+
+            detailForm.Controls.Add(label);
+            detailForm.Controls.Add(listBox);
+            detailForm.Controls.Add(btnContinue);
+            detailForm.Controls.Add(btnCancel);
+            detailForm.AcceptButton = btnContinue;
+            detailForm.CancelButton = btnCancel;
+
+            return detailForm.ShowDialog(this);
+        }
+
+        private void ShowError(string title, string message, string detail = "")
+        {
+            var form = new Form
+            {
+                Width = 450,
+                Height = detail != "" ? 250 : 180,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                Text = title,
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var icon = new PictureBox
+            {
+                Left = 15,
+                Top = 20,
+                Width = 32,
+                Height = 32,
+                Image = SystemIcons.Error.ToBitmap()
+            };
+
+            var msgLabel = new Label
+            {
+                Left = 60,
+                Top = 20,
+                Width = 350,
+                Height = 30,
+                Text = message
+            };
+
+            var btnOk = new Button { Text = "确定", Left = 330, Width = 80, Top = form.Height - 80, DialogResult = DialogResult.OK };
+            form.Controls.Add(icon);
+            form.Controls.Add(msgLabel);
+            form.Controls.Add(btnOk);
+            form.AcceptButton = btnOk;
+
+            if (detail != "")
+            {
+                var detailBox = new TextBox
+                {
+                    Left = 15,
+                    Top = 60,
+                    Width = 400,
+                    Height = form.Height - 120,
+                    Multiline = true,
+                    ReadOnly = true,
+                    ScrollBars = ScrollBars.Vertical,
+                    Text = detail,
+                    BackColor = SystemColors.Control
+                };
+                form.Controls.Add(detailBox);
+            }
+
+            form.ShowDialog(this);
+        }
+
+        private void ShowSuccess(string title, string message)
+        {
+            MessageBox.Show(message, title, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         // Removed old ListBox draw helper after switching to TreeView

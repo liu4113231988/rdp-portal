@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace RDP_Portal
 {
@@ -26,5 +27,11 @@ namespace RDP_Portal
         {
             return GroupName?.ToLowerInvariant().GetHashCode() ?? 0;
         }
+    }
+
+    public class ProfileValidationResult
+    {
+        public List<string> Warnings { get; } = new List<string>();
+        public bool HasIssues => Warnings.Count > 0;
     }
 }
