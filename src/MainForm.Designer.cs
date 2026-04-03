@@ -49,8 +49,6 @@ namespace RDP_Portal {
             panelBottom = new System.Windows.Forms.Panel();
             buttonImport = new System.Windows.Forms.Button();
             buttonExport = new System.Windows.Forms.Button();
-            buttonImportGroups = new System.Windows.Forms.Button();
-            buttonExportGroups = new System.Windows.Forms.Button();
             buttonAbout = new System.Windows.Forms.Button();
             checkBoxKeepOpening = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)pictureBox1).BeginInit();
@@ -466,8 +464,6 @@ namespace RDP_Portal {
             panelBottom.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
             panelBottom.Controls.Add(buttonImport);
             panelBottom.Controls.Add(buttonExport);
-            panelBottom.Controls.Add(buttonImportGroups);
-            panelBottom.Controls.Add(buttonExportGroups);
             panelBottom.Controls.Add(buttonAbout);
             panelBottom.Controls.Add(checkBoxKeepOpening);
             panelBottom.Location = new System.Drawing.Point(0, 601);
@@ -499,30 +495,6 @@ namespace RDP_Portal {
             buttonExport.Text = "Export";
             buttonExport.UseVisualStyleBackColor = true;
             buttonExport.Click += buttonExport_Click;
-            // 
-            // buttonImportGroups
-            // 
-            buttonImportGroups.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
-            buttonImportGroups.Location = new System.Drawing.Point(180, 14);
-            buttonImportGroups.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            buttonImportGroups.Name = "buttonImportGroups";
-            buttonImportGroups.Size = new System.Drawing.Size(100, 34);
-            buttonImportGroups.TabIndex = 4;
-            buttonImportGroups.Text = "Import Groups";
-            buttonImportGroups.UseVisualStyleBackColor = true;
-            buttonImportGroups.Click += buttonImportGroups_Click;
-            // 
-            // buttonExportGroups
-            // 
-            buttonExportGroups.Anchor = System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left;
-            buttonExportGroups.Location = new System.Drawing.Point(284, 14);
-            buttonExportGroups.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
-            buttonExportGroups.Name = "buttonExportGroups";
-            buttonExportGroups.Size = new System.Drawing.Size(100, 34);
-            buttonExportGroups.TabIndex = 5;
-            buttonExportGroups.Text = "Export Groups";
-            buttonExportGroups.UseVisualStyleBackColor = true;
-            buttonExportGroups.Click += buttonExportGroups_Click;
             // 
             // buttonAbout
             // 
@@ -613,8 +585,6 @@ namespace RDP_Portal {
         private System.Windows.Forms.Panel panelBottom;
         private System.Windows.Forms.Button buttonImport;
         private System.Windows.Forms.Button buttonExport;
-        private System.Windows.Forms.Button buttonImportGroups;
-        private System.Windows.Forms.Button buttonExportGroups;
         private System.Windows.Forms.Button buttonAbout;
         private System.Windows.Forms.CheckBox checkBoxKeepOpening;
         private System.Windows.Forms.ImageList imageListTreeView;

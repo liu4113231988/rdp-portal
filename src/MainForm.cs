@@ -1096,108 +1096,22 @@ namespace RDP_Portal
 
         private void ExportJson(string path)
         {
-            var list = new List<Profile>();
-            foreach (Profile p in _config!.Profiles)
+            var exportData = new
             {
-                list.Add(p);
-            }
+                Groups = _config!.Groups,
+                Profiles = _config.Profiles.Cast<Profile>().ToList()
+            };
 
-            var json = Newtonsoft.Json.JsonConvert.SerializeObject(list, Newtonsoft.Json.Formatting.Indented);
+            var json = Newtonsoft.Json.JsonConvert.SerializeObject(exportData, Newtonsoft.Json.Formatting.Indented);
             File.WriteAllText(path, json);
-            Logger.Info($"Exported {list.Count} profiles to JSON: {path}");
-            MessageBox.Show($"Exported {list.Count} profiles to {path}");
+            Logger.Info($"Exported {exportData.Profiles.Count} profiles and {exportData.Groups.Count} groups to JSON: {path}");
+            MessageBox.Show($"Exported {exportData.Profiles.Count} profiles and {exportData.Groups.Count} groups to {path}");
         }
 
         private static string EscapeCsv(string value)
         {
             if (value == null) return "";
             return value.Replace("\"", "\"\"");
-        }
-
-        private void buttonExportGroups_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                using (var sfd = new SaveFileDialog())
-                {
-                    sfd.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
-                    sfd.FileName = "groups.json";
-                    if (sfd.ShowDialog(this) == DialogResult.OK)
-                    {
-                        var json = Newtonsoft.Json.JsonConvert.SerializeObject(_config!.Groups, Newtonsoft.Json.Formatting.Indented);
-                        File.WriteAllText(sfd.FileName, json);
-                        ShowSuccess("导出完成", $"已导出 {_config.Groups.Count} 个 Group 到 {sfd.FileName}");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("Export groups failed", ex);
-                ShowError("导出失败", "导出 Group 时发生错误。", ex.Message);
-            }
-        }
-
-        private void buttonImportGroups_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                using (var ofd = new OpenFileDialog())
-                {
-                    ofd.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*";
-                    if (ofd.ShowDialog(this) == DialogResult.OK)
-                    {
-                        var json = File.ReadAllText(ofd.FileName);
-                        List<Group>? groups = null;
-                        try
-                        {
-                            groups = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Group>>(json);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Error("Failed to parse groups JSON", ex);
-                        }
-
-                        if (groups == null || groups.Count == 0)
-                        {
-                            ShowError("导入失败", "文件中没有找到有效的 Group 数据。", "请检查文件是否为有效的 JSON 格式，且包含 Group 列表。");
-                            return;
-                        }
-
-                        var imported = 0;
-                        var skipped = 0;
-                        foreach (var group in groups)
-                        {
-                            if (string.IsNullOrWhiteSpace(group.GroupName))
-                            {
-                                skipped++;
-                                continue;
-                            }
-                            var existing = _config!.Groups?.FirstOrDefault(g => g.GroupName.Equals(group.GroupName, StringComparison.OrdinalIgnoreCase));
-                            if (existing != null)
-                            {
-                                skipped++;
-                            }
-                            else
-                            {
-                                if (_config.Groups == null) _config.Groups = new List<Group>();
-                                _config.Groups.Add(group);
-                                imported++;
-                            }
-                        }
-
-                        _config!.SaveGroups();
-                        _config.Groups = new ProfileRepository(new DatabaseContext()).GetAllGroups();
-                        PopulateTree();
-
-                        ShowSuccess("导入完成", $"成功导入 {imported} 个 Group" + (skipped > 0 ? $"，跳过 {skipped} 个重复项" : "") + "。");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("Import groups failed", ex);
-                ShowError("导入失败", "导入 Group 时发生错误。", ex.Message);
-            }
         }
 
         private void buttonImport_Click(object sender, EventArgs e)
@@ -1210,68 +1124,111 @@ namespace RDP_Portal
                     if (ofd.ShowDialog(this) == DialogResult.OK)
                     {
                         var json = System.IO.File.ReadAllText(ofd.FileName);
-                        List<Profile>? list = null;
+                        List<Profile>? profileList = null;
+                        List<Group>? groupList = null;
+
                         try
                         {
-                            list = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Profile>>(json);
+                            var jo = Newtonsoft.Json.Linq.JObject.Parse(json);
+                            if (jo["Profiles"] != null)
+                            {
+                                profileList = jo["Profiles"]?.ToObject<List<Profile>>();
+                            }
+                            if (jo["Groups"] != null)
+                            {
+                                groupList = jo["Groups"]?.ToObject<List<Group>>();
+                            }
                         }
                         catch
                         {
                             try
                             {
-                                var jo = Newtonsoft.Json.Linq.JObject.Parse(json);
-                                if (jo["Profiles"] != null)
-                                {
-                                    list = jo["Profiles"]?.ToObject<List<Profile>>();
-                                }
+                                profileList = Newtonsoft.Json.JsonConvert.DeserializeObject<List<Profile>>(json);
                             }
                             catch { }
                         }
 
-                        if (list == null || list.Count == 0)
+                        if ((profileList == null || profileList.Count == 0) && (groupList == null || groupList.Count == 0))
                         {
-                            ShowError("导入失败", "文件中没有找到有效的 Profile 数据。", "请检查文件是否为有效的 JSON 格式，且包含 Profile 列表。");
+                            ShowError("导入失败", "文件中没有找到有效的数据。", "请检查文件是否为有效的 JSON 格式，且包含 Profile 或 Group 列表。");
                             return;
                         }
 
-                        var validation = ValidateProfiles(list);
-                        if (validation.HasIssues)
+                        var importedProfiles = 0;
+                        var skippedProfiles = 0;
+                        var importedGroups = 0;
+                        var skippedGroups = 0;
+
+                        if (groupList != null && groupList.Count > 0)
                         {
-                            var result = ShowValidationDialog(validation);
-                            if (result != DialogResult.Yes)
+                            foreach (var group in groupList)
                             {
-                                return;
+                                if (string.IsNullOrWhiteSpace(group.GroupName))
+                                {
+                                    skippedGroups++;
+                                    continue;
+                                }
+                                var existing = _config!.Groups?.FirstOrDefault(g => g.GroupName.Equals(group.GroupName, StringComparison.OrdinalIgnoreCase));
+                                if (existing != null)
+                                {
+                                    skippedGroups++;
+                                }
+                                else
+                                {
+                                    if (_config.Groups == null) _config.Groups = new List<Group>();
+                                    _config.Groups.Add(group);
+                                    importedGroups++;
+                                }
                             }
+                            _config!.SaveGroups();
+                            _config.Groups = new ProfileRepository(new DatabaseContext()).GetAllGroups();
                         }
 
-                        var imported = 0;
-                        var skipped = 0;
-                        foreach (var profile in list)
+                        if (profileList != null && profileList.Count > 0)
                         {
-                            profile.Id = 0;
-                            if (string.IsNullOrWhiteSpace(profile.Name))
+                            var validation = ValidateProfiles(profileList);
+                            if (validation.HasIssues)
                             {
-                                skipped++;
-                                continue;
+                                var result = ShowValidationDialog(validation);
+                                if (result != DialogResult.Yes)
+                                {
+                                    return;
+                                }
                             }
-                            var existing = _config!.Profiles.FirstOrDefault(p => p.Name == profile.Name && p.Computer == profile.Computer);
-                            if (existing != null)
+
+                            foreach (var profile in profileList)
                             {
-                                skipped++;
+                                profile.Id = 0;
+                                if (string.IsNullOrWhiteSpace(profile.Name))
+                                {
+                                    skippedProfiles++;
+                                    continue;
+                                }
+                                var existing = _config!.Profiles.FirstOrDefault(p => p.Name == profile.Name && p.Computer == profile.Computer);
+                                if (existing != null)
+                                {
+                                    skippedProfiles++;
+                                }
+                                else
+                                {
+                                    _config.Profiles.Add(profile);
+                                    importedProfiles++;
+                                }
                             }
-                            else
-                            {
-                                _config.Profiles.Add(profile);
-                                imported++;
-                            }
+                            _config!.Save();
                         }
 
-                        _config!.Save();
                         UpdateGroupList();
                         PopulateTree();
 
-                        Logger.Info($"Imported {imported} profiles from {ofd.FileName}");
-                        ShowSuccess("导入完成", $"成功导入 {imported} 个 Profile" + (skipped > 0 ? $"，跳过 {skipped} 个重复项" : "") + "。");
+                        var messages = new List<string>();
+                        if (importedProfiles > 0) messages.Add($"成功导入 {importedProfiles} 个 Profile");
+                        if (importedGroups > 0) messages.Add($"成功导入 {importedGroups} 个 Group");
+                        if (skippedProfiles > 0) messages.Add($"跳过 {skippedProfiles} 个重复 Profile");
+                        if (skippedGroups > 0) messages.Add($"跳过 {skippedGroups} 个重复 Group");
+
+                        Logger.Info($"Imported {importedProfiles} profiles and {importedGroups} groups from {ofd.FileName}");
+                        ShowSuccess("导入完成", string.Join("，", messages) + "。");
                     }
                 }
             }
